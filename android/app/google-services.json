@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "368198382683",
+    "firebase_url": "https://zpos-d985c-default-rtdb.firebaseio.com",
+    "project_id": "zpos-d985c",
+    "storage_bucket": "zpos-d985c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:368198382683:android:124fadc4511c30ef41fb7e",
+        "android_client_info": {
+          "package_name": "com.example.washkolangcustomer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAn9Dmm_W9HNsbOj6K8RApfCf7zP4bfriI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:368198382683:android:d5b58d0f8a29594041fb7e",
+        "android_client_info": {
+          "package_name": "com.example.zpos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAn9Dmm_W9HNsbOj6K8RApfCf7zP4bfriI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

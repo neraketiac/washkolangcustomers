@@ -1,0 +1,327 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:washkolangcustomer/loyalty_single.dart';
+import 'package:web/web.dart' as web;
+
+class EnterLoyaltyCode extends StatefulWidget {
+  const EnterLoyaltyCode({super.key});
+
+  @override
+  State<EnterLoyaltyCode> createState() => _EnterLoyaltyCodeState();
+}
+
+class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode> {
+  static const String _storageKey = 'customer_code';
+
+  final TextEditingController _controller = TextEditingController();
+
+  String? _error;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedCode();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  // ================= AUTO LOGIN =================
+
+  Future<void> _checkSavedCode() async {
+    final savedCode = web.window.localStorage.getItem(_storageKey);
+    if (savedCode == null) return;
+
+    final isValid = await _validateCode(savedCode);
+    if (isValid && mounted) {
+      _navigateToCard(savedCode);
+    }
+  }
+
+  Future<bool> _validateCode(String code) async {
+    // Reject if contains #
+    if (code.contains('#')) {
+      return false;
+    }
+
+    final snap = await FirebaseFirestore.instance
+        .collection('loyalty')
+        .where('cardNumber', isEqualTo: int.tryParse(code) ?? 0)
+        .limit(1)
+        .get();
+
+    return snap.docs.isNotEmpty;
+  }
+
+  // ================= LOGIN =================
+
+  Future<void> _login() async {
+    if (_loading) return;
+
+    final code = _controller.text.trim();
+
+    if (code.isEmpty) {
+      setState(() => _error = 'Please enter your card number');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final isValid = await _validateCode(code);
+
+    if (!mounted) return;
+
+    if (isValid) {
+      web.window.localStorage.setItem(_storageKey, code);
+      _navigateToCard(code);
+    } else {
+      setState(() {
+        _error = 'Invalid card number';
+        _loading = false;
+      });
+    }
+  }
+
+  void _navigateToCard(String code) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => MyLoyaltyCard(code)),
+    ).then((_) {
+      setState(() => _loading = false);
+    });
+  }
+
+  // ================= UI =================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(child: _buildContent()),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "🫧 Wash Ko Lang",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueAccent,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              "Loyalty Card Entry",
+              style: TextStyle(fontSize: 13, color: Colors.blueGrey),
+            ),
+            const SizedBox(height: 16),
+
+            // Display
+            Container(
+              width: 250,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(.85),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(color: Colors.blue.shade100, blurRadius: 12),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  _controller.text.isEmpty
+                      ? "Enter Card Number"
+                      : _controller.text,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            _buildKeypad(),
+
+            const SizedBox(height: 14),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _glowButton(
+                  text: _loading ? "Checking..." : "View",
+                  icon: Icons.local_laundry_service,
+                  onTap: _login,
+                ),
+                const SizedBox(width: 12),
+                _softButton(
+                  text: "Clear",
+                  onTap: () {
+                    setState(() => _controller.clear());
+                  },
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            if (_error != null)
+              Text(
+                _error!,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================= KEYPAD =================
+
+  Widget _buildKeypad() {
+    final keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "#", "0", "⌫"];
+
+    return SizedBox(
+      width: 250,
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: keys.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.2,
+        ),
+        itemBuilder: (_, index) {
+          final value = keys[index];
+          return _keyButton(value);
+        },
+      ),
+    );
+  }
+
+  Widget _keyButton(String value) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (value == "⌫") {
+            if (_controller.text.isNotEmpty) {
+              _controller.text = _controller.text.substring(
+                0,
+                _controller.text.length - 1,
+              );
+            }
+          } else {
+            _controller.text += value;
+          }
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(.85),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.shade200,
+              blurRadius: 8,
+              offset: const Offset(2, 4),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.blueAccent,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ================= BUTTONS =================
+
+  Widget _glowButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: _loading ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(color: Colors.blueAccent.withOpacity(.6), blurRadius: 15),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 6),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _softButton({required String text, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.blueAccent),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.blueAccent,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
