@@ -467,16 +467,33 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
 
             const SizedBox(height: 20),
 
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Back",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.blueAccent,
-                  fontWeight: FontWeight.w600,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Back",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.blueAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
+                TextButton(
+                  onPressed: (() {}),
+                  child: const Text(
+                    "Order\n(in progress)",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.blueAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -522,13 +539,13 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
       if (jM.processStep == 'done') {
         if (jM.riderPickup) {
           if (jM.isDeliveredToCustomer) {
-            return '${jM.processStep} 🚲 delivered ${DateFormat('MM/dd hh:mm a').format(jM.riderDeliveryDate.toDate())}';
+            return '${jM.processStep} 🚲 delivered'; // ${DateFormat('MMMM dd, yyyy').format(jM.riderDeliveryDate.toDate())}';
           } else {
             return '${jM.processStep} 🚲 for delivery';
           }
         } else {
           if (jM.isCustomerPickedUp) {
-            return '${jM.processStep} 🛒 pickedup ${DateFormat('MM/dd hh:mm a').format(jM.customerPickupDate.toDate())}';
+            return '${jM.processStep} 🛒 pickedup'; // ${DateFormat('MMMM dd, yyyy').format(jM.riderDeliveryDate.toDate())}';
           } else {
             return '${jM.processStep} 🛒 wait customer pickup';
           }
