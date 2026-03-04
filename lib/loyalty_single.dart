@@ -38,6 +38,7 @@ Future<List<JobModel>> getJobsByCardNumber(String cardNumber) async {
       if (rawId?.toString() == cardNumber) {
         data['docId'] = doc.id;
         final job = JobModel.fromJson(data);
+
         allJobs.add(job);
       }
     }
@@ -89,6 +90,8 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
     // 🔥 Dynamically fetch jobs
     final jobs = await getJobsByCardNumber(widget.code);
 
+    jobs.sort((a, b) => a.dateD.compareTo(b.dateD));
+
     // Inject jobs in memory only
     loyalty.jobs = jobs;
 
@@ -133,7 +136,49 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
   // ================= MAIN CARD =================
 
   Widget _modernCardUI(LoyaltyModel loyalty) {
-    final int filledStars = loyalty.jobs.length > 10 ? 10 : loyalty.jobs.length;
+    /// sort jobs by date
+    final jobs = [...loyalty.jobs];
+    jobs.sort((a, b) => a.dateD.compareTo(b.dateD));
+
+    /// map stamps to jobs
+    final List<int> starToJobIndex = [];
+
+    for (int j = 0; j < jobs.length; j++) {
+      final job = jobs[j];
+
+      for (int i = 0; i < job.promoCounter; i++) {
+        starToJobIndex.add(j);
+      }
+    }
+
+    /// detect reward stamps
+    final List<int> rewardStars = [];
+    final List<int> filteredStars = [];
+
+    for (int i = 0; i < starToJobIndex.length; i++) {
+      if ((i + 1) % 11 == 0) {
+        rewardStars.add(starToJobIndex[i]);
+      } else {
+        filteredStars.add(starToJobIndex[i]);
+      }
+    }
+
+    /// split stamps into promo groups
+    final List<List<int>> promoGroups = [];
+
+    for (int i = 0; i < filteredStars.length; i += 10) {
+      promoGroups.add(
+        filteredStars.sublist(
+          i,
+          (i + 10 > filteredStars.length) ? filteredStars.length : i + 10,
+        ),
+      );
+    }
+
+    /// newest promo card on top
+    final groups = promoGroups.reversed.toList();
+
+    final promoCounter = starToJobIndex.length;
 
     return Center(
       child: SingleChildScrollView(
@@ -157,7 +202,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
             const SizedBox(height: 16),
 
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -175,53 +220,234 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
 
                     const SizedBox(height: 18),
 
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 10,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 5,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                          ),
-                      itemBuilder: (context, index) {
-                        final filled = index < filledStars;
+                    /// PROMO CARDS
+                    Column(
+                      children: groups.asMap().entries.map((entry) {
+                        final groupIndex = entry.key;
+                        final groupStars = entry.value;
+                        final filledStars = groupStars.length;
 
-                        return GestureDetector(
-                          onTap: filled
-                              ? () {
-                                  setState(() {
-                                    _selectedIndex = _selectedIndex == index
-                                        ? null
-                                        : index;
-                                  });
-                                }
-                              : null,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: filled
-                                  ? (_selectedIndex == index
-                                        ? Colors.orangeAccent
-                                        : Colors.blueAccent)
-                                  : Colors.blue.shade50,
-                            ),
-                            child: Icon(
-                              filled ? Icons.star : Icons.star_border,
-                              color: filled ? Colors.white : Colors.blueGrey,
-                              size: 18,
-                            ),
+                        /// real promo index
+                        final rewardIndex = promoGroups.length - 1 - groupIndex;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              /// STAMP GRID
+                              Expanded(
+                                child: GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: 10,
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 5,
+                                        mainAxisSpacing: 10,
+                                        crossAxisSpacing: 10,
+                                      ),
+                                  itemBuilder: (context, index) {
+                                    final filled = index < filledStars;
+
+                                    int? jobIndex;
+
+                                    if (filled && index < groupStars.length) {
+                                      jobIndex = groupStars[index];
+                                    }
+
+                                    String? stampDate;
+
+                                    if (filled && jobIndex != null) {
+                                      final job = jobs[jobIndex];
+
+                                      final DateTime d = job.dateD.toDate();
+
+                                      stampDate =
+                                          "${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}";
+                                    }
+
+                                    return GestureDetector(
+                                      onTap: filled && jobIndex != null
+                                          ? () {
+                                              setState(() {
+                                                _selectedIndex = jobIndex!;
+                                              });
+                                            }
+                                          : null,
+                                      child: AnimatedScale(
+                                        scale: (_selectedIndex == jobIndex)
+                                            ? 1.15
+                                            : 1,
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: filled
+                                                ? const LinearGradient(
+                                                    colors: [
+                                                      Color(0xFF4FC3F7),
+                                                      Color(0xFF1E88E5),
+                                                    ],
+                                                  )
+                                                : null,
+                                            color: filled
+                                                ? null
+                                                : Colors.blue.shade100,
+                                            boxShadow: filled
+                                                ? [
+                                                    BoxShadow(
+                                                      color: Colors.blueAccent
+                                                          .withOpacity(.4),
+                                                      blurRadius: 12,
+                                                    ),
+                                                  ]
+                                                : [],
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                filled
+                                                    ? Icons.star
+                                                    : Icons.star_border,
+                                                color: filled
+                                                    ? Colors.white
+                                                    : Colors.blueGrey,
+                                                size: 24,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              if (filled && stampDate != null)
+                                                Text(
+                                                  stampDate,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors
+                                                        .blueGrey
+                                                        .shade700,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                              const SizedBox(width: 12),
+
+                              /// BIG FREE STAR
+                              /// BIG FREE STAR
+                              Builder(
+                                builder: (context) {
+                                  int? jobIndex;
+
+                                  if (rewardStars.length > rewardIndex) {
+                                    jobIndex = rewardStars[rewardIndex];
+                                  }
+
+                                  String? stampDate;
+
+                                  if (jobIndex != null) {
+                                    final job = jobs[jobIndex];
+                                    final DateTime d = job.dateD.toDate();
+
+                                    stampDate =
+                                        "${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}";
+                                  }
+
+                                  return GestureDetector(
+                                    onTap: jobIndex != null
+                                        ? () {
+                                            setState(() {
+                                              _selectedIndex = jobIndex!;
+                                            });
+                                          }
+                                        : null,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      width: 70,
+                                      height: 70,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: jobIndex != null
+                                            ? const LinearGradient(
+                                                colors: [
+                                                  Color(0xFFFFD54F),
+                                                  Color(0xFFFFA000),
+                                                ],
+                                              )
+                                            : null,
+                                        color: jobIndex != null
+                                            ? null
+                                            : Colors.orange.shade100,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.orange.withOpacity(
+                                              .35,
+                                            ),
+                                            blurRadius: 10,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.star,
+                                            color: Colors.white,
+                                            size: 28,
+                                          ),
+
+                                          const SizedBox(height: 2),
+
+                                          const Text(
+                                            "FREE",
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+
+                                          if (stampDate != null)
+                                            Text(
+                                              stampDate,
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         );
-                      },
+                      }).toList(),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
+                    /// TOTAL
                     Text(
-                      "$filledStars / 10 Washes",
+                      "$promoCounter Washes",
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -231,33 +457,9 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
 
                     const SizedBox(height: 12),
 
-                    if (_selectedIndex != null &&
-                        _selectedIndex! < loyalty.jobs.length)
-                      _jobDetailCard(loyalty.jobs[_selectedIndex!]),
-
-                    const SizedBox(height: 14),
-
-                    if (filledStars >= 10)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF64B5F6), Color(0xFF2196F3)],
-                          ),
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child: const Text(
-                          "🎁 FREE WASH!",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                    /// JOB DETAILS
+                    if (_selectedIndex != null && _selectedIndex! < jobs.length)
+                      _jobDetailCard(jobs[_selectedIndex!]),
                   ],
                 ),
               ),
@@ -355,7 +557,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
             "📅 Date",
             DateFormat('MMMM dd, yyyy').format(job.dateD.toDate()),
           ),
-          _detailRow('Status', textJobStatus(job)),
+          _detailRow('🫧 Status', textJobStatus(job)),
           _detailRow("💰 Price", "₱${job.finalPrice}"),
           _detailRow(
             "💳 Payment",
@@ -367,6 +569,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
                 ? "Paid GCash(unverified)"
                 : "Unpaid",
           ),
+          if (job.remarks != '') _detailRow("✍️ Remarks", job.remarks),
         ],
       ),
     );
