@@ -1,8 +1,55 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
-import 'package:intl/intl.dart';
+
+// 🔥 Make sure these are defined somewhere in your project
+// const String JOBS_QUEUE_REF = "Jobs_queue";
+// const String JOBS_ONGOING_REF = "Jobs_ongoing";
+// const String JOBS_DONE_REF = "Jobs_done";
+// const String JOBS_COMPLETED_REF = "Jobs_completed";
+
+// ================= JOB QUERY FUNCTION =================
+
+Future<List<JobModel>> getJobsByCardNumber(String cardNumber) async {
+  const String JOBS_QUEUE_REF = "Jobs_queue";
+  const String JOBS_ONGOING_REF = "Jobs_ongoing";
+  const String JOBS_DONE_REF = "Jobs_done";
+  const String JOBS_COMPLETED_REF = "Jobs_completed";
+  final firestore = FirebaseFirestore.instance;
+
+  const jobCollections = [
+    JOBS_QUEUE_REF,
+    JOBS_ONGOING_REF,
+    JOBS_DONE_REF,
+    JOBS_COMPLETED_REF,
+  ];
+
+  List<JobModel> allJobs = [];
+
+  for (final jobCollection in jobCollections) {
+    final snapshot = await firestore.collection(jobCollection).get();
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final dynamic rawId = data['C00_CustomerId'];
+
+      if (rawId?.toString() == cardNumber) {
+        data['docId'] = doc.id;
+        final job = JobModel.fromJson(data);
+        allJobs.add(job);
+      }
+    }
+  }
+
+  // Sort latest first
+  allJobs.sort((a, b) => b.dateD.compareTo(a.dateD));
+
+  return allJobs;
+}
+
+// ================= MAIN WIDGET =================
 
 class MyLoyaltyCard extends StatefulWidget {
   final String code;
@@ -27,7 +74,9 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
     final parsed = int.tryParse(widget.code);
     if (parsed == null) return null;
 
-    final snap = await FirebaseFirestore.instance
+    final firestore = FirebaseFirestore.instance;
+
+    final snap = await firestore
         .collection('loyalty')
         .where('cardNumber', isEqualTo: parsed)
         .limit(1)
@@ -37,7 +86,12 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
 
     final loyalty = LoyaltyModel.fromJson(snap.docs.first.data());
 
-    // ✅ Auto select first job if exists
+    // 🔥 Dynamically fetch jobs
+    final jobs = await getJobsByCardNumber(widget.code);
+
+    // Inject jobs in memory only
+    loyalty.jobs = jobs;
+
     if (loyalty.jobs.isNotEmpty) {
       _selectedIndex = 0;
     }
@@ -121,7 +175,6 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
 
                     const SizedBox(height: 18),
 
-                    // ⭐ STARS
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -178,7 +231,6 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
 
                     const SizedBox(height: 12),
 
-                    // ⭐ JOB DETAILS (AUTO SHOW STAR 1)
                     if (_selectedIndex != null &&
                         _selectedIndex! < loyalty.jobs.length)
                       _jobDetailCard(loyalty.jobs[_selectedIndex!]),
@@ -256,6 +308,37 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
     );
   }
 
+  String textJobStatus(JobModel jM) {
+    if (jM.processStep == '') {
+      if (jM.forSorting) {
+        return 'For Sorting';
+      }
+      if (jM.riderPickup) {
+        return 'Rider Pickup';
+      }
+    } else {
+      if (jM.processStep == 'done') {
+        if (jM.riderPickup) {
+          if (jM.isDeliveredToCustomer) {
+            return '${jM.processStep} 🚲 delivered\n${DateFormat('MM/dd hh:mm a').format(jM.riderDeliveryDate.toDate())}';
+          } else {
+            return '${jM.processStep} 🚲 for delivery';
+          }
+        } else {
+          if (jM.isCustomerPickedUp) {
+            return '${jM.processStep} 🛒 pickedup\n${DateFormat('MM/dd hh:mm a').format(jM.customerPickupDate.toDate())}';
+          } else {
+            return '${jM.processStep} 🛒 wait customer pickup';
+          }
+        }
+      } else {
+        return jM.processStep;
+      }
+    }
+
+    return 'no status';
+  }
+
   Widget _jobDetailCard(JobModel job) {
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -272,16 +355,16 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
             "📅 Date",
             DateFormat('MMMM dd, yyyy').format(job.dateD.toDate()),
           ),
-          _detailRow("🧺 Load", job.finalLoad.toString()),
+          _detailRow('Status', textJobStatus(job)),
           _detailRow("💰 Price", "₱${job.finalPrice}"),
           _detailRow(
             "💳 Payment",
             job.paidCash
-                ? "Cash"
+                ? "Paid Cash"
                 : job.paidGCashverified
-                ? "GCash"
+                ? "Paid GCash(verified)"
                 : job.paidGCash
-                ? "GCash(unverified)"
+                ? "Paid GCash(unverified)"
                 : "Unpaid",
           ),
         ],
