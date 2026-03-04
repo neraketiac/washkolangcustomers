@@ -10,8 +10,13 @@ class EnterLoyaltyCode extends StatefulWidget {
   State<EnterLoyaltyCode> createState() => _EnterLoyaltyCodeState();
 }
 
-class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode> {
+class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
+    with TickerProviderStateMixin {
   static const String _storageKey = 'customer_code';
+  late AnimationController controller;
+  late Animation<double> animation;
+  late AnimationController controllerbubble;
+  late Animation<double> animationbubble;
 
   final TextEditingController _controller = TextEditingController();
 
@@ -22,10 +27,30 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode> {
   void initState() {
     super.initState();
     _checkSavedCode();
+
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    animation = Tween<double>(begin: -6, end: 6).animate(controller);
+
+    controllerbubble = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+
+    animationbubble = Tween<double>(
+      begin: -10,
+      end: 16,
+    ).animate(controllerbubble);
   }
 
   @override
   void dispose() {
+    controllerbubble.dispose();
+    _controller.dispose();
+    super.dispose();
     //_controller.dispose();
     super.dispose();
   }
@@ -123,12 +148,68 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedBuilder(
+                  animation: animationbubble,
+                  builder: (_, child) {
+                    return Transform.translate(
+                      offset: Offset(0, animationbubble.value),
+                      child: child,
+                    );
+                  },
+                  child: const Text(
+                    "🫧",
+                    style: TextStyle(
+                      fontSize: 44,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+
+                //Image.asset("assets/images/washkolang.png", width: 280),
+                AnimatedBuilder(
+                  animation: animation,
+                  builder: (_, child) {
+                    return Transform.translate(
+                      offset: Offset(0, animation.value),
+                      child: child,
+                    );
+                  },
+                  child: Image.asset(
+                    "assets/images/washkolang.png",
+                    width: 280,
+                  ),
+                ),
+
+                AnimatedBuilder(
+                  animation: animationbubble,
+                  builder: (_, child) {
+                    return Transform.translate(
+                      offset: Offset(0, animationbubble.value),
+                      child: child,
+                    );
+                  },
+                  child: const Text(
+                    "🫧",
+                    style: TextStyle(
+                      fontSize: 44,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
             const Text(
-              "🫧 Wash Ko Lang",
+              "Laundry Hub",
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Colors.blueAccent,
+                color: Colors.grey,
               ),
             ),
             const SizedBox(height: 4),
