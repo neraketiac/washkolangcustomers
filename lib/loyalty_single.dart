@@ -61,14 +61,36 @@ class MyLoyaltyCard extends StatefulWidget {
   State<MyLoyaltyCard> createState() => _MyLoyaltyCardState();
 }
 
-class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
+class _MyLoyaltyCardState extends State<MyLoyaltyCard>
+    with TickerProviderStateMixin {
   int? _selectedIndex;
   Future<LoyaltyModel?>? _future;
+  late AnimationController controller;
+  late Animation<double> animation;
+  late AnimationController controllerbubble;
+  late Animation<double> animationbubble;
 
   @override
   void initState() {
     super.initState();
     _future = _fetchLoyalty();
+
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    animation = Tween<double>(begin: -6, end: 6).animate(controller);
+
+    controllerbubble = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+
+    animationbubble = Tween<double>(
+      begin: -10,
+      end: 16,
+    ).animate(controllerbubble);
   }
 
   Future<LoyaltyModel?> _fetchLoyalty() async {
@@ -186,12 +208,68 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedBuilder(
+                  animation: animationbubble,
+                  builder: (_, child) {
+                    return Transform.translate(
+                      offset: Offset(0, animationbubble.value),
+                      child: child,
+                    );
+                  },
+                  child: const Text(
+                    "🫧",
+                    style: TextStyle(
+                      fontSize: 44,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+
+                //Image.asset("assets/images/washkolang.png", width: 280),
+                AnimatedBuilder(
+                  animation: animation,
+                  builder: (_, child) {
+                    return Transform.translate(
+                      offset: Offset(0, animation.value),
+                      child: child,
+                    );
+                  },
+                  child: Image.asset(
+                    "assets/images/washkolang.png",
+                    width: 280,
+                  ),
+                ),
+
+                AnimatedBuilder(
+                  animation: animationbubble,
+                  builder: (_, child) {
+                    return Transform.translate(
+                      offset: Offset(0, animationbubble.value),
+                      child: child,
+                    );
+                  },
+                  child: const Text(
+                    "🫧",
+                    style: TextStyle(
+                      fontSize: 44,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
             const Text(
-              "🫧 Wash Ko Lang",
+              "Laundry Hub",
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Colors.blueAccent,
+                color: Colors.grey,
               ),
             ),
             const SizedBox(height: 4),
