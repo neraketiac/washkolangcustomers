@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:washkolangcustomer/loyalty_single.dart';
+import 'package:washkolangcustomer/showBatchTwoWeeksChecking.dart';
 import 'package:web/web.dart' as web;
 
 class EnterLoyaltyCode extends StatefulWidget {
@@ -268,6 +269,13 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
               ],
             ),
 
+            // _glowButton(
+            //   text: "Batch Two Weeks",
+            //   icon: Icons.local_laundry_service,
+            //   onTap: () {
+            //     showBatchTwoWeeksChecking(context);
+            //   },
+            // ),
             const SizedBox(height: 8),
 
             if (_error != null)

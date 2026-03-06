@@ -13,15 +13,15 @@ import 'package:washkolangcustomer/model/loyaltymodel.dart';
 // ================= JOB QUERY FUNCTION =================
 
 Future<List<JobModel>> getJobsByCardNumber(String cardNumber) async {
-  const String JOBS_QUEUE_REF = "Jobs_queue";
-  const String JOBS_ONGOING_REF = "Jobs_ongoing";
+  // const String JOBS_QUEUE_REF = "Jobs_queue";
+  // const String JOBS_ONGOING_REF = "Jobs_ongoing";
   const String JOBS_DONE_REF = "Jobs_done";
   const String JOBS_COMPLETED_REF = "Jobs_completed";
   final firestore = FirebaseFirestore.instance;
 
   const jobCollections = [
-    JOBS_QUEUE_REF,
-    JOBS_ONGOING_REF,
+    //JOBS_QUEUE_REF,
+    //JOBS_ONGOING_REF,
     JOBS_DONE_REF,
     JOBS_COMPLETED_REF,
   ];
@@ -124,6 +124,33 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
     return loyalty;
   }
 
+  void _showPromoRules() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Laundry Loyalty Promo"),
+        content: const SingleChildScrollView(
+          child: Text(
+            "• The promo aims to reward customers who continuously use our laundry service for two (2) weeks.\n\n"
+            "• “Using our service” means availing the laundry service and settling the payment on time for each transaction.\n\n"
+            "• If a payment is delayed or unpaid, the time will still be counted within the two-week period. In such cases, the promo eligibility may be reset or removed.\n\n"
+            "• The promo period begins on the date when there are no payment or service violations.\n\n"
+            "• Promo is only applicable in Full Service 155 Php(1load=1star). Any modifications would still be considered as 1 star.\n\n"
+            "• Customers who successfully complete ten (10) paid laundry services within the promo conditions will receive one (1) free wash.\n\n"
+            "• The loyalty promo is non-transferable and intended for the same customer account.\n\n"
+            "• Management reserves the right to adjust or clarify the promo terms if necessary to maintain fairness and service quality.",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,7 +186,18 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
   Widget _modernCardUI(LoyaltyModel loyalty) {
     /// sort jobs by date
-    final jobs = [...loyalty.jobs];
+    final jobsAll = [...loyalty.jobs];
+    jobsAll.sort((a, b) => b.dateD.compareTo(a.dateD));
+
+    final sorted = [...loyalty.jobs]
+      ..sort((a, b) => b.dateD.compareTo(a.dateD));
+
+    final hasBoundary = sorted.any((j) => j.isPromoCounter == false);
+
+    final jobs = hasBoundary
+        ? sorted.takeWhile((j) => j.isPromoCounter != false).toList()
+        : sorted;
+
     jobs.sort((a, b) => a.dateD.compareTo(b.dateD));
 
     /// map stamps to jobs
@@ -356,7 +394,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                       child: AnimatedScale(
                                         scale: (_selectedIndex == jobIndex)
                                             ? 1.15
-                                            : 1,
+                                            : 0.7,
                                         duration: const Duration(
                                           milliseconds: 250,
                                         ),
@@ -523,6 +561,18 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
                     const SizedBox(height: 12),
 
+                    TextButton(
+                      onPressed: _showPromoRules,
+                      child: const Text(
+                        "Promo Rules",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+
                     /// TOTAL
                     Text(
                       "$promoCounter Load(s) Full Service",
@@ -573,6 +623,8 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                 ),
               ],
             ),
+
+            _jobHistoryList(jobsAll),
           ],
         ),
       ),
@@ -580,6 +632,178 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   }
 
   // ================= HELPERS =================
+
+  Widget _jobHistoryList(List<JobModel> jobs) {
+    bool foundFirstFalse = false;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+
+        const Text(
+          "Job History",
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.blueGrey,
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        /// HEADER ROW
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.blueGrey.shade100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Text(
+                  "JobId",
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  "Date",
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+              // Expanded(
+              //   flex: 2,
+              //   child: Text(
+              //     "Status",
+              //     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              //   ),
+              // ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  "Price",
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  "Payment",
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  "Promo",
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 4),
+
+        ...jobs.map((job) {
+          final DateTime d = job.dateD.toDate();
+
+          bool firstFalseOnly = true;
+
+          if (job.isPromoCounter == false && !foundFirstFalse) {
+            firstFalseOnly = false; // this is the first false
+            foundFirstFalse = true; // remember we already found it
+          }
+
+          final date =
+              "${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}";
+
+          final isPromo = job.isPromoCounter ?? true;
+
+          String payment = "Unpaid";
+          if (job.paidCash) payment = "Cash";
+          if (job.paidGCash) {
+            payment = "GCash${job.paidGCashverified ? '' : ' Pending'}";
+          }
+
+          String status = "Unknown";
+
+          if (job.dateC.seconds > 0) {
+            status = "Completed";
+          } else if (job.dateD.seconds > 0) {
+            status = "Done";
+          } else if (job.dateO.seconds > 0) {
+            status = "On-going";
+          } else {
+            status = "Queue";
+          }
+
+          return Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.blueGrey.shade50,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    "#${job.jobId}",
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(date, style: const TextStyle(fontSize: 12)),
+                ),
+                // Expanded(
+                //   flex: 2,
+                //   child: Text(status, style: const TextStyle(fontSize: 12)),
+                // ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    "₱${job.finalPrice}",
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(payment, style: const TextStyle(fontSize: 12)),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    job.promoCounter <= 0
+                        ? "not eligible"
+                        : isPromo
+                        ? (job.unpaid ? "eligible(for review)" : "eligible")
+                        : firstFalseOnly
+                        ? "not eligible"
+                        : "reset",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: job.promoCounter <= 0
+                          ? Colors.red
+                          : isPromo
+                          ? Colors.green
+                          : Colors.red,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
 
   Widget _infoRow(String label, String value) {
     return Padding(
@@ -648,6 +872,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _detailRow("💼 Job Id", "#${job.jobId}"),
           _detailRow(
             "📅 Date",
             DateFormat('MMMM dd, yyyy').format(job.dateD.toDate()),
