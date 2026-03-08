@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
+import 'package:washkolangcustomer/model/otheritemmodel.dart';
 
 // 🔥 Make sure these are defined somewhere in your project
 // const String JOBS_QUEUE_REF = "Jobs_queue";
@@ -91,6 +92,13 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
       begin: -10,
       end: 16,
     ).animate(controllerbubble);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose(); // IMPORTANT
+    controllerbubble.dispose();
+    super.dispose();
   }
 
   Future<LoyaltyModel?> _fetchLoyalty() async {
@@ -373,9 +381,36 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                     }
 
                                     String? stampDate;
+                                    bool hasPromoFree = false;
 
                                     if (filled && jobIndex != null) {
                                       final job = jobs[jobIndex];
+
+                                      //check the star if has free - start
+
+                                      const int menuOthFree = 423;
+
+                                      const String groupOth = "Oth";
+
+                                      final promoFree = OtherItemModel(
+                                        docId: "",
+                                        itemId: menuOthFree,
+                                        itemUniqueId: menuOthFree,
+                                        itemGroup: groupOth,
+                                        itemName: "Free",
+                                        itemPrice: -155,
+                                        stocksAlert: 5,
+                                        stocksType: "pcs",
+                                      );
+
+                                      //check if this job took the free
+                                      hasPromoFree = job.items.any(
+                                        (item) =>
+                                            item.itemUniqueId ==
+                                            promoFree.itemUniqueId,
+                                      );
+
+                                      //check the star if has free - end
 
                                       final DateTime d = job.dateD.toDate();
 
@@ -425,9 +460,9 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                                   ]
                                                 : [],
                                           ),
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
+                                          child: Stack(
+                                            clipBehavior: Clip.none,
+                                            alignment: Alignment.center,
                                             children: [
                                               Icon(
                                                 filled
@@ -436,18 +471,82 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                                 color: filled
                                                     ? Colors.white
                                                     : Colors.blueGrey,
-                                                size: 24,
+                                                size: 54,
                                               ),
-                                              const SizedBox(height: 4),
+
                                               if (filled && stampDate != null)
-                                                Text(
-                                                  stampDate,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors
-                                                        .blueGrey
-                                                        .shade700,
+                                                Positioned(
+                                                  top: 26,
+                                                  right: 6,
+                                                  child: Transform.rotate(
+                                                    angle: 0.2,
+                                                    child: Stack(
+                                                      children: [
+                                                        Text(
+                                                          stampDate,
+                                                          style: TextStyle(
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            foreground: Paint()
+                                                              ..style =
+                                                                  PaintingStyle
+                                                                      .stroke
+                                                              ..strokeWidth = 3
+                                                              ..color =
+                                                                  Colors.black,
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          stampDate,
+                                                          style: const TextStyle(
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: Colors
+                                                                .amberAccent,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+
+                                              if (hasPromoFree)
+                                                Positioned(
+                                                  top: 8,
+                                                  right: 4,
+                                                  child: Transform.rotate(
+                                                    angle: 0.2,
+                                                    child: Stack(
+                                                      children: [
+                                                        Text(
+                                                          "Free Taken",
+                                                          style: TextStyle(
+                                                            fontSize: 8,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            foreground: Paint()
+                                                              ..style =
+                                                                  PaintingStyle
+                                                                      .stroke
+                                                              ..strokeWidth = 3
+                                                              ..color =
+                                                                  Colors.black,
+                                                          ),
+                                                        ),
+                                                        Text(
+                                                          "Free Taken",
+                                                          style: const TextStyle(
+                                                            fontSize: 8,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: Colors
+                                                                .amberAccent,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
                                                 ),
                                             ],
