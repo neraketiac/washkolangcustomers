@@ -1030,33 +1030,80 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
     int originalPrice = job.finalPrice + (155 * promoFreeCount);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            const TextSpan(
-              text: "💰 Price: ",
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.blueAccent,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// HEADER
+          const Row(
+            children: [
+              Expanded(child: SizedBox()),
+              Expanded(
+                child: Text(
+                  "Original",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            TextSpan(
-              text: "₱$originalPrice - (155*($promoFreeCount free)) = ",
-              style: const TextStyle(
-                fontStyle: FontStyle.italic, // slanted
-                color: Colors.black87,
+              Expanded(
+                child: Text(
+                  "Free",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-            TextSpan(
-              text: "₱${job.finalPrice}",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold, // bold result
-                fontSize: 16,
+              Expanded(
+                child: Text(
+                  "Total",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+
+          const SizedBox(height: 4),
+
+          /// VALUES
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  "💰 Price:",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+              ),
+
+              /// Original Price
+              Expanded(
+                child: Text("₱$originalPrice", textAlign: TextAlign.right),
+              ),
+
+              /// Free value
+              Expanded(
+                child: Text(
+                  "₱${155 * promoFreeCount}\n($promoFreeCount free)",
+                  textAlign: TextAlign.right,
+                ),
+              ),
+
+              /// Final price
+              Expanded(
+                child: Text(
+                  "₱${job.finalPrice}",
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
