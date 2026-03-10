@@ -884,15 +884,15 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                   flex: 2,
                   child: Text(
                     job.promoCounter <= 0
-                        ? "not eligible"
+                        ? "not included in promo"
                         : isPromo
                         ? foundFirstFalse
-                              ? "not eligible anymore"
+                              ? "previous order is not eligible anymore"
                               : (job.unpaid
                                     ? "eligible(for review still unpaid)"
                                     : "eligible")
                         : firstFalseOnly
-                        ? "not eligible"
+                        ? "not eligible, either unpaid or not with 2 weeks"
                         : "reset",
                     style: TextStyle(
                       fontSize: 12,
