@@ -71,6 +71,17 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   late AnimationController controllerbubble;
   late Animation<double> animationbubble;
 
+  final promoFree = OtherItemModel(
+    docId: "",
+    itemId: 423,
+    itemUniqueId: 423,
+    itemGroup: "Oth",
+    itemName: "Free",
+    itemPrice: -155,
+    stocksAlert: 5,
+    stocksType: "pcs",
+  );
+
   @override
   void initState() {
     super.initState();
@@ -382,26 +393,12 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
                                     String? stampDate;
                                     bool hasPromoFree = false;
+                                    int promoFreeCount = 0;
 
                                     if (filled && jobIndex != null) {
                                       final job = jobs[jobIndex];
 
                                       //check the star if has free - start
-
-                                      const int menuOthFree = 423;
-
-                                      const String groupOth = "Oth";
-
-                                      final promoFree = OtherItemModel(
-                                        docId: "",
-                                        itemId: menuOthFree,
-                                        itemUniqueId: menuOthFree,
-                                        itemGroup: groupOth,
-                                        itemName: "Free",
-                                        itemPrice: -155,
-                                        stocksAlert: 5,
-                                        stocksType: "pcs",
-                                      );
 
                                       //check if this job took the free
                                       hasPromoFree = job.items.any(
@@ -409,6 +406,14 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                             item.itemUniqueId ==
                                             promoFree.itemUniqueId,
                                       );
+
+                                      promoFreeCount = job.items
+                                          .where(
+                                            (item) =>
+                                                item.itemUniqueId ==
+                                                promoFree.itemUniqueId,
+                                          )
+                                          .length;
 
                                       //check the star if has free - end
 
@@ -515,13 +520,13 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                               if (hasPromoFree)
                                                 Positioned(
                                                   top: 8,
-                                                  right: 4,
+                                                  right: 0,
                                                   child: Transform.rotate(
-                                                    angle: 0.2,
+                                                    angle: 0,
                                                     child: Stack(
                                                       children: [
                                                         Text(
-                                                          "Free Taken",
+                                                          "($promoFreeCount) Free Taken",
                                                           style: TextStyle(
                                                             fontSize: 8,
                                                             fontWeight:
@@ -536,7 +541,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                                           ),
                                                         ),
                                                         Text(
-                                                          "Free Taken",
+                                                          "($promoFreeCount) Free Taken",
                                                           style: const TextStyle(
                                                             fontSize: 8,
                                                             fontWeight:
@@ -881,7 +886,11 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                     job.promoCounter <= 0
                         ? "not eligible"
                         : isPromo
-                        ? (job.unpaid ? "eligible(for review)" : "eligible")
+                        ? foundFirstFalse
+                              ? "not eligible anymore"
+                              : (job.unpaid
+                                    ? "eligible(for review still unpaid)"
+                                    : "eligible")
                         : firstFalseOnly
                         ? "not eligible"
                         : "reset",
@@ -960,6 +969,9 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   }
 
   Widget _jobDetailCard(JobModel job) {
+    final int promoFreeCount = job.items
+        .where((item) => item.itemUniqueId == promoFree.itemUniqueId)
+        .length;
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
@@ -977,7 +989,9 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
             DateFormat('MMMM dd, yyyy').format(job.dateD.toDate()),
           ),
           _detailRow('🫧 Status', textJobStatus(job)),
-          _detailRow("💰 Price", "₱${job.finalPrice}"),
+          if (promoFreeCount > 0) _detailRowPriceFree(job, promoFreeCount),
+
+          if (promoFreeCount <= 0) _detailRow("💰 Price", "₱${job.finalPrice}"),
           _detailRow(
             "💳 Payment",
             job.paidCash
@@ -1008,6 +1022,41 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
           ),
           Expanded(child: Text(value)),
         ],
+      ),
+    );
+  }
+
+  Widget _detailRowPriceFree(JobModel job, int promoFreeCount) {
+    int originalPrice = job.finalPrice + (155 * promoFreeCount);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            const TextSpan(
+              text: "💰 Price: ",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.blueAccent,
+              ),
+            ),
+            TextSpan(
+              text: "₱$originalPrice - (155*($promoFreeCount free)) = ",
+              style: const TextStyle(
+                fontStyle: FontStyle.italic, // slanted
+                color: Colors.black87,
+              ),
+            ),
+            TextSpan(
+              text: "₱${job.finalPrice}",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold, // bold result
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

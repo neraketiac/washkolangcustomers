@@ -131,8 +131,8 @@ Future<void> showBatchTwoWeeksChecking(BuildContext context) async {
         // if (unpaid) continue;
 
         //remove stop checking
-        // boundaryFound = true;
-        // break; // stop checking older jobs
+        boundaryFound = true;
+        break; // stop checking older jobs
       }
 
       if (boundaryFound || jobs.isNotEmpty) {
