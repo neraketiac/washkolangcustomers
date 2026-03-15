@@ -70,6 +70,19 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   late Animation<double> animation;
   late AnimationController controllerbubble;
   late Animation<double> animationbubble;
+  final Map<int, String> promoErrorMessages = {
+    0: "Eligible for promo",
+    1: "Not eligible – unpaid for 2 weeks",
+    2: "Not eligible – unpaid for 2 weeks",
+    3: "Not eligible – last laundry not within 2 weeks",
+    4: "Promo ended",
+    5: "Promo reset – previous eligible jobs are no longer counted",
+    99: "No promo status",
+  };
+
+  String getPromoErrorMessage(int? code) {
+    return promoErrorMessages[code] ?? "Unknown promo status";
+  }
 
   final promoFree = OtherItemModel(
     docId: "",
@@ -211,10 +224,10 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
     final sorted = [...loyalty.jobs]
       ..sort((a, b) => b.dateD.compareTo(a.dateD));
 
-    final hasBoundary = sorted.any((j) => j.isPromoCounter == false);
+    final hasBoundary = sorted.any((j) => j.promoErrorCode != 0);
 
     final jobs = hasBoundary
-        ? sorted.takeWhile((j) => j.isPromoCounter != false).toList()
+        ? sorted.takeWhile((j) => j.promoErrorCode == 0).toList()
         : sorted;
 
     jobs.sort((a, b) => a.dateD.compareTo(b.dateD));
@@ -817,7 +830,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
           bool firstFalseOnly = true;
 
-          if (job.isPromoCounter == false && !foundFirstFalse) {
+          if (job.promoErrorCode != 0 && !foundFirstFalse) {
             firstFalseOnly = false; // this is the first false
             foundFirstFalse = true; // remember we already found it
           }
@@ -825,7 +838,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
           final date =
               "${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}";
 
-          final isPromo = job.isPromoCounter ?? true;
+          final isPromo = job.promoErrorCode == 0;
 
           String payment = "Unpaid";
           if (job.paidCash) payment = "Cash";
@@ -883,25 +896,21 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                 Expanded(
                   flex: 2,
                   child: Text(
-                    job.promoCounter <= 0
-                        ? "not included in promo"
-                        : isPromo
-                        ? foundFirstFalse
-                              ? "previous order is not eligible anymore"
-                              : (job.unpaid
-                                    ? "eligible(for review still unpaid)"
-                                    : "eligible")
-                        : firstFalseOnly
-                        ? "not eligible, either unpaid or not with 2 weeks"
-                        : "reset",
+                    (foundFirstFalse
+                        ? firstFalseOnly
+                              ? 'stamp lost, due to previous violation'
+                              : getPromoErrorMessage(job.promoErrorCode)
+                        : job.unpaid
+                        ? 'eligible may lost if unpaid for two weeks'
+                        : getPromoErrorMessage(job.promoErrorCode)),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: job.promoCounter <= 0
+                      color: (foundFirstFalse
                           ? Colors.red
-                          : isPromo
+                          : job.promoErrorCode == 0
                           ? Colors.green
-                          : Colors.red,
+                          : Colors.red),
                     ),
                   ),
                 ),

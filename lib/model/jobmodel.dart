@@ -119,8 +119,8 @@ class JobModel {
   bool forDisposal;
   bool disposed;
   bool isSyncToDB2; //tels if sync to db2
-  bool
-  isPromoCounter; //if this is false, succeeding records will not be checked and consider false.
+  int
+  promoErrorCode; //if this is false, succeeding records will not be checked and consider false.
 
   JobModel({
     required this.docId,
@@ -170,7 +170,7 @@ class JobModel {
     required this.forDisposal,
     required this.disposed,
     required this.isSyncToDB2,
-    required this.isPromoCounter,
+    required this.promoErrorCode,
   });
 
   factory JobModel.makeEmpty() {
@@ -222,7 +222,7 @@ class JobModel {
       forDisposal: false,
       disposed: false,
       isSyncToDB2: false,
-      isPromoCounter: true,
+      promoErrorCode: 99,
     );
   }
 
@@ -275,7 +275,7 @@ class JobModel {
     bool? forDisposal,
     bool? disposed,
     bool? isSyncToDB2,
-    bool? isPromoCounter,
+    int? promoErrorCode,
   }) {
     return JobModel(
       docId: docId ?? this.docId,
@@ -326,7 +326,7 @@ class JobModel {
       forDisposal: forDisposal ?? this.forDisposal,
       disposed: disposed ?? this.disposed,
       isSyncToDB2: isSyncToDB2 ?? this.isSyncToDB2,
-      isPromoCounter: isPromoCounter ?? this.isPromoCounter,
+      promoErrorCode: promoErrorCode ?? this.promoErrorCode,
     );
   }
 
@@ -381,7 +381,7 @@ class JobModel {
     forDisposal: json['R01_ForDisposal'],
     disposed: json['R02_Disposed'],
     isSyncToDB2: json['Z00_IsSyncToDB2'] ?? false,
-    isPromoCounter: json['Z01_IsPromoCounter'] ?? true,
+    promoErrorCode: json['Z01_PromoErrorCode'] ?? 0,
   );
 
   /// 🟧 TO FIRESTORE
@@ -433,6 +433,6 @@ class JobModel {
     'R01_ForDisposal': forDisposal,
     'R02_Disposed': disposed,
     'Z00_IsSyncToDB2': isSyncToDB2,
-    'Z01_IsPromoCounter': isPromoCounter,
+    'Z01_PromoErrorCode': promoErrorCode,
   };
 }
