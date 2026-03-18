@@ -376,30 +376,31 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                     _infoRow("Contact", loyalty.contact),
                     _infoRow("Address", loyalty.address),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      child: Row(
-                        children: [
-                          const Text(
-                            "Total Balance: ",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.blueGrey,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              "₱${NumberFormat('#,##0.00').format(jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.finalPrice) - jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.paidCashAmount + (j.paidGCashverified ? j.paidGCashAmount : 0)))}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red,
+                    if (jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.finalPrice) - jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.paidCashAmount + (j.paidGCashverified ? j.paidGCashAmount : 0)) > 0)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          children: [
+                            const Text(
+                              "Total Balance: ",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blueGrey,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                            Expanded(
+                              child: Text(
+                                "₱${NumberFormat('#,##0.00').format(jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.finalPrice) - jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.paidCashAmount + (j.paidGCashverified ? j.paidGCashAmount : 0)))}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
 
                     const SizedBox(height: 18),
 
