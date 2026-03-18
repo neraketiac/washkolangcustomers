@@ -858,6 +858,13 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
             status = "Queue";
           }
 
+          final hasPromoFree = job.items.any(
+            (item) => item.itemUniqueId == promoFree.itemUniqueId,
+          );
+          final promoFreeCount = job.items
+              .where((item) => item.itemUniqueId == promoFree.itemUniqueId)
+              .length;
+
           return Container(
             margin: const EdgeInsets.symmetric(vertical: 4),
             padding: const EdgeInsets.all(10),
@@ -896,21 +903,17 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                 Expanded(
                   flex: 2,
                   child: Text(
-                    (foundFirstFalse
-                        ? firstFalseOnly
-                              ? 'stamp lost, due to previous violation'
-                              : getPromoErrorMessage(job.promoErrorCode)
-                        : job.unpaid
-                        ? 'eligible may lost if unpaid for two weeks'
-                        : getPromoErrorMessage(job.promoErrorCode)),
+                    job.promoErrorCode == 5
+                        ? 'stamp lost, due to previous violation'
+                        : job.promoErrorCode == 0 && hasPromoFree
+                        ? '${getPromoErrorMessage(job.promoErrorCode)} ($promoFreeCount free taken)'
+                        : getPromoErrorMessage(job.promoErrorCode),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: (foundFirstFalse
-                          ? Colors.red
-                          : job.promoErrorCode == 0
+                      color: job.promoErrorCode == 0
                           ? Colors.green
-                          : Colors.red),
+                          : Colors.red,
                     ),
                   ),
                 ),
