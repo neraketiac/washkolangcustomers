@@ -72,7 +72,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   late Animation<double> animationbubble;
   final Map<int, String> promoErrorMessages = {
     0: "Eligible for promo",
-    1: "Not eligible – unpaid for 2 weeks",
+    1: "On review – partial eligible, unpaid",
     2: "Not eligible – unpaid for 2 weeks",
     3: "Not eligible – last laundry not within 2 weeks",
     4: "Promo ended",
@@ -219,6 +219,15 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   Widget _modernCardUI(LoyaltyModel loyalty) {
     /// sort jobs by date
     final jobsAll = [...loyalty.jobs];
+    print("Total jobs loaded: ${jobsAll.length}");
+    for (var job in jobsAll) {
+      final paid =
+          job.paidCashAmount +
+          (job.paidGCashverified ? job.paidGCashAmount : 0);
+      print(
+        "Job #${job.jobId} - Date: ${job.dateD.toDate()} - Price: ₱${job.finalPrice} - Paid: ₱$paid - Unpaid: ${job.unpaid} - PaidCash: ${job.paidCashAmount} - PaidGCash: ${job.paidGCashAmount} - GCashVerified: ${job.paidGCashverified} code: ${job.promoErrorCode}",
+      );
+    }
     jobsAll.sort((a, b) => b.dateD.compareTo(a.dateD));
 
     final sorted = [...loyalty.jobs]
@@ -237,6 +246,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
     for (int j = 0; j < jobs.length; j++) {
       final job = jobs[j];
+      print(job);
 
       for (int i = 0; i < job.promoCounter; i++) {
         starToJobIndex.add(j);
@@ -365,6 +375,31 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                     _infoRow("Name", loyalty.name),
                     _infoRow("Contact", loyalty.contact),
                     _infoRow("Address", loyalty.address),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        children: [
+                          const Text(
+                            "Total Balance: ",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blueGrey,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              "₱${NumberFormat('#,##0.00').format(jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.finalPrice) - jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.paidCashAmount + (j.paidGCashverified ? j.paidGCashAmount : 0)))}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                     const SizedBox(height: 18),
 
@@ -752,6 +787,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
   Widget _jobHistoryList(List<JobModel> jobs) {
     bool foundFirstFalse = false;
+    bool foundCode5 = false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -835,6 +871,10 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
             foundFirstFalse = true; // remember we already found it
           }
 
+          if (job.promoErrorCode == 5) {
+            foundCode5 = true;
+          }
+
           final date =
               "${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}/${d.year}";
 
@@ -891,19 +931,57 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                 // ),
                 Expanded(
                   flex: 2,
-                  child: Text(
-                    "₱${job.finalPrice}",
-                    style: const TextStyle(fontSize: 12),
-                  ),
+                  child: () {
+                    final paid =
+                        job.paidCashAmount +
+                        (job.paidGCashverified ? job.paidGCashAmount : 0);
+                    final isEqual = job.finalPrice == paid;
+                    final isPaidZero = paid == 0;
+                    return Text(
+                      (isEqual || isPaidZero)
+                          ? "₱${job.finalPrice}"
+                          : "₱${job.finalPrice} / ₱$paid",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: (isEqual || isPaidZero)
+                            ? Colors.black
+                            : Colors.orange.shade800,
+                      ),
+                    );
+                  }(),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text(payment, style: const TextStyle(fontSize: 12)),
+                  child: () {
+                    String payment = "Unpaid";
+                    Color paymentColor = Colors.red;
+
+                    if (job.paidCash) {
+                      payment = "Cash";
+                      paymentColor = Colors.black;
+                    }
+                    if (job.paidGCash) {
+                      if (job.paidGCashverified) {
+                        payment = "GCash";
+                        paymentColor = Colors.black;
+                      } else {
+                        payment = "GCash Pending";
+                        paymentColor = Colors.orange.shade800;
+                      }
+                    }
+
+                    return Text(
+                      payment,
+                      style: TextStyle(fontSize: 12, color: paymentColor),
+                    );
+                  }(),
                 ),
                 Expanded(
                   flex: 2,
                   child: Text(
-                    job.promoErrorCode == 5
+                    foundCode5
+                        ? 'stamp lost, due to previous violation'
+                        : job.promoErrorCode == 5
                         ? 'stamp lost, due to previous violation'
                         : job.promoErrorCode == 0 && hasPromoFree
                         ? '${getPromoErrorMessage(job.promoErrorCode)} ($promoFreeCount free taken)'
@@ -911,8 +989,12 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: job.promoErrorCode == 0
+                      color: foundCode5
+                          ? Colors.red
+                          : job.promoErrorCode == 0
                           ? Colors.green
+                          : job.promoErrorCode == 1
+                          ? Colors.orange.shade800
                           : Colors.red,
                     ),
                   ),
@@ -1003,7 +1085,23 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
           _detailRow('🫧 Status', textJobStatus(job)),
           if (promoFreeCount > 0) _detailRowPriceFree(job, promoFreeCount),
 
-          if (promoFreeCount <= 0) _detailRow("💰 Price", "₱${job.finalPrice}"),
+          if (promoFreeCount <= 0)
+            () {
+              final paid =
+                  job.paidCashAmount +
+                  (job.paidGCashverified ? job.paidGCashAmount : 0);
+              final isEqual = job.finalPrice == paid;
+              final isPaidZero = paid == 0;
+              return _detailRow(
+                "💰 Price",
+                (isEqual || isPaidZero)
+                    ? "₱${job.finalPrice}"
+                    : "₱${job.finalPrice} / ₱$paid",
+                textColor: (isEqual || isPaidZero)
+                    ? null
+                    : Colors.orange.shade800,
+              );
+            }(),
           _detailRow(
             "💳 Payment",
             job.paidCash
@@ -1020,7 +1118,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
     );
   }
 
-  Widget _detailRow(String label, String value) {
+  Widget _detailRow(String label, String value, {Color? textColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -1032,7 +1130,9 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
               color: Colors.blueAccent,
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(value, style: TextStyle(color: textColor)),
+          ),
         ],
       ),
     );
