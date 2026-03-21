@@ -279,67 +279,104 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
             // ),
             const SizedBox(height: 12),
 
-            // Pickup booking button
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const PickupBookingScreen(),
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF66BB6A), Color(0xFF388E3C)],
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color.fromRGBO(56, 142, 60, 0.5),
-                      blurRadius: 12,
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.local_shipping, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Schedule Pickup',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
             if (_error != null)
               Text(
                 _error!,
                 style: const TextStyle(color: Colors.redAccent, fontSize: 13),
               ),
 
-            const SizedBox(height: 20),
-            _facebookButton(),
+            // Pickup + Facebook row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PickupBookingScreen(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF66BB6A), Color(0xFF388E3C)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.local_shipping,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Pickup now',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'or',
+                    style: TextStyle(color: Colors.blueGrey, fontSize: 12),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => web.window.open(
+                    'https://m.me/WashkoLangLaundryHub',
+                    '_blank',
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1877F2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('💬', style: TextStyle(fontSize: 12)),
+                        SizedBox(width: 5),
+                        Text(
+                          'Message via FB',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _facebookButton() {
+  Widget facebookButton() {
     return GestureDetector(
       onTap: () {
         web.window.open('https://m.me/WashkoLangLaundryHub', '_blank');

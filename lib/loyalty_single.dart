@@ -778,108 +778,100 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                     ),
                   ),
                 ),
-                TextButton(
-                  onPressed: (() {}),
-                  child: const Text(
-                    "Order\n(in progress)",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.blueAccent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
               ],
             ),
 
             const SizedBox(height: 8),
 
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PickupBookingScreen(
-                      prefillName: loyalty.name,
-                      prefillContact: loyalty.contact,
-                      prefillAddress: loyalty.address,
-                      requireAddress: false,
+            // Pickup + Facebook row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PickupBookingScreen(
+                          prefillName: loyalty.name,
+                          prefillContact: loyalty.contact,
+                          prefillAddress: loyalty.address,
+                          requireAddress: false,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF66BB6A), Color(0xFF388E3C)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.local_shipping,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Pickup now',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
                 ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF66BB6A), Color(0xFF388E3C)],
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'or',
+                    style: TextStyle(color: Colors.blueGrey, fontSize: 12),
                   ),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color.fromRGBO(56, 142, 60, 0.5),
-                      blurRadius: 12,
+                ),
+                GestureDetector(
+                  onTap: () => web.window.open(
+                    'https://m.me/WashkoLangLaundryHub',
+                    '_blank',
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.local_shipping, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Schedule Pickup',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1877F2),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            GestureDetector(
-              onTap: () {
-                web.window.open('https://m.me/WashkoLangLaundryHub', '_blank');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1877F2),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color.fromRGBO(24, 119, 242, 0.4),
-                      blurRadius: 12,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('💬', style: TextStyle(fontSize: 12)),
+                        SizedBox(width: 5),
+                        Text(
+                          'Message via FB',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('💬', style: TextStyle(fontSize: 16)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Message Us on Facebook',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
 
             _jobHistoryList(jobsAll),
