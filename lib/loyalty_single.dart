@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
+import 'package:web/web.dart' as web;
 
 // 🔥 Make sure these are defined somewhere in your project
 // const String JOBS_QUEUE_REF = "Jobs_queue";
@@ -376,7 +377,21 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                     _infoRow("Contact", loyalty.contact),
                     _infoRow("Address", loyalty.address),
 
-                    if (jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.finalPrice) - jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.paidCashAmount + (j.paidGCashverified ? j.paidGCashAmount : 0)) > 0)
+                    if (jobsAll
+                                .where((j) => j.unpaid)
+                                .fold<int>(0, (sum, j) => sum + j.finalPrice) -
+                            jobsAll
+                                .where((j) => j.unpaid)
+                                .fold<int>(
+                                  0,
+                                  (sum, j) =>
+                                      sum +
+                                      j.paidCashAmount +
+                                      (j.paidGCashverified
+                                          ? j.paidGCashAmount
+                                          : 0),
+                                ) >
+                        0)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 3),
                         child: Row(
@@ -775,6 +790,45 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                   ),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 8),
+
+            GestureDetector(
+              onTap: () {
+                web.window.open('https://m.me/WashkoLangLaundryHub', '_blank');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1877F2),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color.fromRGBO(24, 119, 242, 0.4),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('💬', style: TextStyle(fontSize: 16)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Message Us on Facebook',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
             _jobHistoryList(jobsAll),

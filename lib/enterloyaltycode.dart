@@ -283,6 +283,42 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
                 _error!,
                 style: const TextStyle(color: Colors.redAccent, fontSize: 13),
               ),
+
+            const SizedBox(height: 20),
+            _facebookButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _facebookButton() {
+    return GestureDetector(
+      onTap: () {
+        web.window.open('https://m.me/WashkoLangLaundryHub', '_blank');
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1877F2),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(color: Color.fromRGBO(24, 119, 242, 0.4), blurRadius: 12),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('💬', style: TextStyle(fontSize: 16)),
+            SizedBox(width: 8),
+            Text(
+              'Message Us on Facebook',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
           ],
         ),
       ),
