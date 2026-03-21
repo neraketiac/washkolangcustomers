@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:washkolangcustomer/loyalty_single.dart';
+import 'package:washkolangcustomer/pickup_booking.dart';
 import 'package:washkolangcustomer/showBatchTwoWeeksChecking.dart';
 import 'package:web/web.dart' as web;
 
@@ -276,6 +277,52 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
             //     showBatchTwoWeeksChecking(context);
             //   },
             // ),
+            const SizedBox(height: 12),
+
+            // Pickup booking button
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PickupBookingScreen(),
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF66BB6A), Color(0xFF388E3C)],
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color.fromRGBO(56, 142, 60, 0.5),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_shipping, color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Schedule Pickup',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 8),
 
             if (_error != null)
