@@ -5,10 +5,10 @@ import 'package:washkolangcustomer/model/model_rider_availability.dart';
 
 // slot key → display label
 const _slotLabels = {
-  'slot7to9': '7-9am',
-  'slot9to12': '9-12pm',
-  'slot12to4': '12-4pm',
-  'slot4to9': '4-9pm',
+  'slot7to9': '7am-9am',
+  'slot9to12': '9am-12pm',
+  'slot12to4': '12pm-4pm',
+  'slot4to9': '4pm-9pm',
 };
 
 class PickupBookingScreen extends StatefulWidget {
@@ -409,10 +409,10 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                     spacing: 12,
                     runSpacing: 4,
                     children: [
-                      _legendItem(const Color(0xFF43A047), '7-9am'),
-                      _legendItem(const Color(0xFF1E88E5), '9-12pm'),
-                      _legendItem(const Color(0xFFFB8C00), '12-4pm'),
-                      _legendItem(const Color(0xFF8E24AA), '4-9pm'),
+                      _legendItem(const Color(0xFF43A047), '7am-9am'),
+                      _legendItem(const Color(0xFF1E88E5), '9am-12pm'),
+                      _legendItem(const Color(0xFFFB8C00), '12pm-4pm'),
+                      _legendItem(const Color(0xFF8E24AA), '4pm-9pm'),
                     ],
                   ),
 

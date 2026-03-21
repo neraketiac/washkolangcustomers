@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:washkolangcustomer/loyalty_single.dart';
 import 'package:washkolangcustomer/pickup_booking.dart';
-import 'package:washkolangcustomer/showBatchTwoWeeksChecking.dart';
+import 'package:washkolangcustomer/rider_location.dart';
 import 'package:web/web.dart' as web;
 
 class EnterLoyaltyCode extends StatefulWidget {
@@ -93,6 +93,13 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
 
     if (code.isEmpty) {
       setState(() => _error = 'Please enter your card number');
+      return;
+    }
+
+    // Admin code — open location sharing panel
+    if (code == '1346792580') {
+      _controller.clear();
+      showDialog(context: context, builder: (_) => const AdminRiderPanel());
       return;
     }
 
@@ -362,6 +369,53 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // Check Rider Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RiderLocationScreen(),
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.blueGrey.shade200),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.electric_moped,
+                          size: 16,
+                          color: Colors.blueGrey,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Check Rider Status',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blueGrey,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],

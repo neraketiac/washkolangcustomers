@@ -5,6 +5,7 @@ import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
 import 'package:washkolangcustomer/pickup_booking.dart';
+import 'package:washkolangcustomer/rider_location.dart';
 import 'package:web/web.dart' as web;
 
 // 🔥 Make sure these are defined somewhere in your project
@@ -865,6 +866,53 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // Check Rider Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RiderLocationScreen(),
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.blueGrey.shade200),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.electric_moped,
+                          size: 16,
+                          color: Colors.blueGrey,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Check Rider Status',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blueGrey,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
