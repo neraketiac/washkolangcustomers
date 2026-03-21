@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
+import 'package:washkolangcustomer/pickup_booking.dart';
 import 'package:web/web.dart' as web;
 
 // 🔥 Make sure these are defined somewhere in your project
@@ -790,6 +791,56 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                   ),
                 ),
               ],
+            ),
+
+            const SizedBox(height: 8),
+
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PickupBookingScreen(
+                      prefillName: loyalty.name,
+                      prefillContact: loyalty.contact,
+                      prefillAddress: loyalty.address,
+                      requireAddress: false,
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF66BB6A), Color(0xFF388E3C)],
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color.fromRGBO(56, 142, 60, 0.5),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_shipping, color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Schedule Pickup',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
             const SizedBox(height: 8),

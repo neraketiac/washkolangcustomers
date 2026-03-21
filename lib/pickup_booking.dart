@@ -12,7 +12,18 @@ const _slotLabels = {
 };
 
 class PickupBookingScreen extends StatefulWidget {
-  const PickupBookingScreen({super.key});
+  final String? prefillName;
+  final String? prefillContact;
+  final String? prefillAddress;
+  final bool requireAddress;
+
+  const PickupBookingScreen({
+    super.key,
+    this.prefillName,
+    this.prefillContact,
+    this.prefillAddress,
+    this.requireAddress = true,
+  });
 
   @override
   State<PickupBookingScreen> createState() => _PickupBookingScreenState();
@@ -37,6 +48,9 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
   @override
   void initState() {
     super.initState();
+    _nameController.text = widget.prefillName ?? '';
+    _contactController.text = widget.prefillContact ?? '';
+    _addressController.text = widget.prefillAddress ?? '';
     _loadMonthAvailability(_focusedMonth);
   }
 
@@ -123,8 +137,13 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
 
   Future<void> _saveOrder() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      setState(() => _saveError = 'Name is required');
+    final address = _addressController.text.trim();
+    if (name.isEmpty || (widget.requireAddress && address.isEmpty)) {
+      setState(
+        () => _saveError = widget.requireAddress
+            ? 'Name and Address are required'
+            : 'Name is required',
+      );
       return;
     }
     setState(() {
@@ -662,6 +681,7 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                   label: 'Name',
                   hint: 'Your name',
                   required: true,
+                  onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 12),
                 _formField(
@@ -673,8 +693,10 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                 _formField(
                   controller: _addressController,
                   label: 'Address',
-                  hint: 'Pickup address (optional)',
+                  hint: 'Pickup address',
+                  required: widget.requireAddress,
                   maxLines: 2,
+                  onChanged: (_) => setState(() {}),
                 ),
               ],
             ),
@@ -721,28 +743,44 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
 
           GestureDetector(
             onTap: _saving ? null : _saveOrder,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 13),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
-                ),
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blueAccent.withValues(alpha: 0.5),
-                    blurRadius: 12,
+            child: Builder(
+              builder: (context) {
+                final canSave =
+                    _nameController.text.trim().isNotEmpty &&
+                    (!widget.requireAddress ||
+                        _addressController.text.trim().isNotEmpty);
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 13,
                   ),
-                ],
-              ),
-              child: Text(
-                _saving ? 'Saving...' : 'Confirm Booking',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: canSave
+                          ? [const Color(0xFF42A5F5), const Color(0xFF1E88E5)]
+                          : [Colors.grey.shade300, Colors.grey.shade400],
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: canSave
+                        ? [
+                            BoxShadow(
+                              color: Colors.blueAccent.withValues(alpha: 0.5),
+                              blurRadius: 12,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Text(
+                    _saving ? 'Saving...' : 'Confirm Booking',
+                    style: TextStyle(
+                      color: canSave ? Colors.white : Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 
@@ -758,6 +796,7 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
     required String hint,
     bool required = false,
     int maxLines = 1,
+    void Function(String)? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,6 +822,7 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
         TextField(
           controller: controller,
           maxLines: maxLines,
+          onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.blueGrey.shade200, fontSize: 13),
