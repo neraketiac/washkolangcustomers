@@ -40,6 +40,7 @@ class PickupBookingScreen extends StatefulWidget {
   final String? prefillContact;
   final String? prefillAddress;
   final bool requireAddress;
+  final int cardNumber;
 
   const PickupBookingScreen({
     super.key,
@@ -47,6 +48,7 @@ class PickupBookingScreen extends StatefulWidget {
     this.prefillContact,
     this.prefillAddress,
     this.requireAddress = true,
+    this.cardNumber = 0,
   });
 
   @override
@@ -61,7 +63,9 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
   bool _loadingAvailability = false;
   final Map<String, ModelRiderAvailability> _availabilityCache = {};
 
-  String _step = 'calendar'; // 'calendar' | 'form'
+  // 'bookings' | 'calendar' | 'form'
+  // logged-in customers start on bookings tab; walk-ins go straight to calendar
+  late String _step;
 
   final _nameController = TextEditingController();
   final _contactController = TextEditingController();
@@ -73,6 +77,7 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
   @override
   void initState() {
     super.initState();
+    _step = widget.cardNumber > 0 ? 'bookings' : 'calendar';
     _nameController.text = widget.prefillName ?? '';
     _contactController.text = widget.prefillContact ?? '';
     _addressController.text = widget.prefillAddress ?? '';
@@ -276,6 +281,7 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
       scheduleDate: _selectedDate!,
       timeSlot: _selectedSlot!,
       createdAt: Timestamp.now(),
+      cardNumber: widget.cardNumber,
     );
     await FirebaseFirestore.instance
         .collection('loyalty_order_online')
@@ -292,8 +298,17 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.pop(context); // close dialog
+              if (widget.cardNumber > 0) {
+                setState(() {
+                  _step = 'bookings';
+                  _selectedDate = null;
+                  _selectedAvailability = null;
+                  _selectedSlot = null;
+                });
+              } else {
+                Navigator.pop(context); // pop screen for walk-ins
+              }
             },
             child: const Text('OK'),
           ),
@@ -314,8 +329,223 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
           ),
         ),
         child: SafeArea(
-          child: _step == 'calendar' ? _buildCalendarStep() : _buildFormStep(),
+          child: _step == 'bookings'
+              ? _buildBookingsStep()
+              : _step == 'calendar'
+              ? _buildCalendarStep()
+              : _buildFormStep(),
         ),
+      ),
+    );
+  }
+
+  // ===================== BOOKINGS STEP =====================
+
+  Widget _buildBookingsStep() {
+    return Column(
+      children: [
+        // top bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios, size: 18),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const Expanded(
+                child: Text(
+                  'My Pickup Bookings',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+              ),
+              // New booking button
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  _selectedDate = null;
+                  _selectedAvailability = null;
+                  _selectedSlot = null;
+                  _step = 'calendar';
+                }),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('New', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('loyalty_order_online')
+                .where('cardNumber', isEqualTo: widget.cardNumber)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.local_shipping_outlined,
+                        size: 48,
+                        color: Colors.blueGrey,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No bookings yet.',
+                        style: TextStyle(color: Colors.blueGrey, fontSize: 14),
+                      ),
+                      const SizedBox(height: 16),
+                      GestureDetector(
+                        onTap: () => setState(() => _step = 'calendar'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Book a Pickup',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final orders =
+                  snapshot.data!.docs
+                      .map((d) => LoyaltyOrderOnlineModel.fromFirestore(d))
+                      .toList()
+                    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                itemCount: orders.length,
+                itemBuilder: (_, i) => _bookingCard(orders[i]),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _bookingCard(LoyaltyOrderOnlineModel o) {
+    final statusColor = switch (o.pickupStatus) {
+      PickupStatus.queued => Colors.orange,
+      PickupStatus.enroute => Colors.blue,
+      PickupStatus.done => Colors.green,
+    };
+    final date =
+        '${_monthName(o.scheduleDate.month)} ${o.scheduleDate.day}, ${o.scheduleDate.year}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.blue.shade100, blurRadius: 8)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_today,
+                size: 14,
+                color: Colors.blueGrey,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '$date · ${o.timeSlot}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  o.pickupStatus.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (o.address.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 13,
+                  color: Colors.blueGrey,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    o.address,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.blueGrey,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (o.remarks.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Note: ${o.remarks}',
+              style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade400),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -343,7 +573,13 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back_ios, size: 18),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  if (widget.cardNumber > 0) {
+                    setState(() => _step = 'bookings');
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
               ),
               const Expanded(
                 child: Text(
@@ -829,7 +1065,10 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                   label: 'Name',
                   hint: 'Your name',
                   required: true,
-                  onChanged: (_) => setState(() {}),
+                  readOnly: widget.cardNumber > 0,
+                  onChanged: widget.cardNumber > 0
+                      ? null
+                      : (_) => setState(() {}),
                 ),
                 const SizedBox(height: 12),
                 _formField(
@@ -952,6 +1191,7 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
     required String label,
     required String hint,
     bool required = false,
+    bool readOnly = false,
     int maxLines = 1,
     void Function(String)? onChanged,
   }) {
@@ -973,6 +1213,14 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                 ' *',
                 style: TextStyle(color: Colors.redAccent, fontSize: 13),
               ),
+            if (readOnly)
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Text(
+                  '(auto-filled)',
+                  style: TextStyle(fontSize: 11, color: Colors.blueGrey),
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 4),
@@ -980,12 +1228,13 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
           controller: controller,
           maxLines: maxLines,
           maxLength: 100,
+          readOnly: readOnly,
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.blueGrey.shade200, fontSize: 13),
             filled: true,
-            fillColor: Colors.blue.shade50,
+            fillColor: readOnly ? Colors.grey.shade100 : Colors.blue.shade50,
             counterStyle: const TextStyle(fontSize: 10, color: Colors.blueGrey),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

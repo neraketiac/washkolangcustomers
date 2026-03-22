@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:washkolangcustomer/main.dart';
 import 'package:washkolangcustomer/model/jobmodel.dart';
+import 'package:washkolangcustomer/model/loyalty_order_online_model.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
 import 'package:washkolangcustomer/pickup_booking.dart';
@@ -839,6 +841,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                           prefillContact: loyalty.contact,
                           prefillAddress: loyalty.address,
                           requireAddress: false,
+                          cardNumber: loyalty.cardNumber,
                         ),
                       ),
                     );
@@ -963,9 +966,115 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
               ],
             ),
 
+            _pickupOrdersList(loyalty.cardNumber),
+
             _jobHistoryList(jobsAll),
           ],
         ),
+      ),
+    );
+  }
+
+  // ================= PICKUP ORDERS =================
+
+  Widget _pickupOrdersList(int cardNumber) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: firestore
+          .collection('loyalty_order_online')
+          .where('cardNumber', isEqualTo: cardNumber)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final orders =
+            snapshot.data!.docs
+                .map((d) => LoyaltyOrderOnlineModel.fromFirestore(d))
+                .toList()
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            const Text(
+              'My Pickup Bookings',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueGrey,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...orders.map((o) => _pickupOrderCard(o)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _pickupOrderCard(LoyaltyOrderOnlineModel o) {
+    final statusColor = switch (o.pickupStatus) {
+      PickupStatus.queued => Colors.orange,
+      PickupStatus.enroute => Colors.blue,
+      PickupStatus.done => Colors.green,
+    };
+    final date = DateFormat('MMM d, yyyy').format(o.scheduleDate);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.blue.shade100, blurRadius: 8)],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.local_shipping, size: 20, color: Colors.blueGrey),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$date · ${o.timeSlot}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+                if (o.address.isNotEmpty)
+                  Text(
+                    o.address,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.blueGrey,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+            ),
+            child: Text(
+              o.pickupStatus.label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: statusColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
