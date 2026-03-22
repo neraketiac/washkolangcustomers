@@ -72,6 +72,26 @@ class RiderLocationWidget extends StatefulWidget {
   State<RiderLocationWidget> createState() => _RiderLocationWidgetState();
 }
 
+// slot key → display label (same as pickup_booking.dart)
+const _scheduleSlotLabels = {
+  'slot7to9': '7am–9am',
+  'slot9to10': '9am–10am',
+  'slot10to12': '10am–12pm',
+  'slot1to3': '1pm–3pm',
+  'slot3to5': '3pm–5pm',
+  'slot5to7': '5pm–7pm',
+  'slot7to9pm': '7pm–9pm',
+};
+const _scheduleSlotEndHour = {
+  'slot7to9': 9,
+  'slot9to10': 10,
+  'slot10to12': 12,
+  'slot1to3': 15,
+  'slot3to5': 17,
+  'slot5to7': 19,
+  'slot7to9pm': 21,
+};
+
 class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   double? _lat;
   double? _lng;
@@ -80,10 +100,56 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   String? _lastUpdated;
   StreamSubscription? _sub;
 
+  List<String> _todaySlots = [];
+  bool _loadingSlots = false;
+
   @override
   void initState() {
     super.initState();
     _checkThenStream();
+  }
+
+  Future<void> _loadTodaySlots() async {
+    final now = DateTime.now();
+    final docId =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    setState(() => _loadingSlots = true);
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Rider_schedule')
+          .doc(docId)
+          .get();
+      if (!doc.exists) {
+        if (mounted)
+          setState(() {
+            _todaySlots = [];
+            _loadingSlots = false;
+          });
+        return;
+      }
+      final data = doc.data()!;
+      final slots = <String>[];
+      for (final entry in _scheduleSlotLabels.entries) {
+        final key = entry.key;
+        final label = entry.value;
+        final enabled = data[key] == true;
+        final endHour = _scheduleSlotEndHour[key] ?? 0;
+        if (enabled && now.hour < endHour) {
+          slots.add(label);
+        }
+      }
+      if (mounted)
+        setState(() {
+          _todaySlots = slots;
+          _loadingSlots = false;
+        });
+    } catch (_) {
+      if (mounted)
+        setState(() {
+          _todaySlots = [];
+          _loadingSlots = false;
+        });
+    }
   }
 
   Future<void> _checkThenStream() async {
@@ -92,28 +158,32 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
 
     final initial = await ref.get();
     if (!initial.exists) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _offline = true;
         });
+      }
+      _loadTodaySlots();
       return;
     }
 
     // Rider is online — now open the live stream
     _sub = ref.snapshots().listen((snap) {
       if (!snap.exists) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _lat = null;
             _lng = null;
             _offline = true;
           });
+        }
+        _loadTodaySlots();
         return;
       }
       final data = snap.data()!;
       final ts = data['updatedAt'] as Timestamp?;
-      if (mounted)
+      if (mounted) {
         setState(() {
           _lat = (data['lat'] as num?)?.toDouble();
           _lng = (data['lng'] as num?)?.toDouble();
@@ -125,6 +195,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
                 '${d.month}/${d.day} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
           }
         });
+      }
     });
   }
 
@@ -138,11 +209,85 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_offline || _lat == null || _lng == null) {
-      return const Center(
-        child: Text(
-          'Rider is not currently sharing location.\nCheck back later.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.blueGrey, fontSize: 13),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.electric_moped,
+                size: 40,
+                color: Colors.blueGrey,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Rider is not currently sharing location.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.blueGrey,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_loadingSlots)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else if (_todaySlots.isNotEmpty) ...[
+                const Text(
+                  "Today's rider schedule:",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blueGrey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.center,
+                  children: _todaySlots
+                      .map(
+                        (slot) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Text(
+                            slot,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Check back during these times.',
+                  style: TextStyle(fontSize: 11, color: Colors.blueGrey),
+                ),
+              ] else
+                const Text(
+                  'No more rider slots available today.\nCheck back tomorrow.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.blueGrey, fontSize: 12),
+                ),
+            ],
+          ),
         ),
       );
     }
@@ -216,7 +361,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadNotifyState());
+    // No token fetch on startup — only request permission when user opts in
   }
 
   Future<String?> _getToken() async {
@@ -230,7 +375,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
         if (mounted) {
           setState(
             () => _notifyStatus =
-                'Notifications blocked. Click the 🔒 lock icon in the address bar → Notifications → Allow, then refresh the page.',
+                'Notifications blocked. Click the 🔒 lock icon in the address bar → Notifications → Allow, then refresh.',
           );
         }
         return null;
@@ -241,26 +386,9 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
       final token = await FirebaseMessaging.instance.getToken(
         vapidKey: _kVapidKey,
       );
-      print('FCM token obtained: $token');
       return token;
     } catch (e) {
-      print('getToken failed: $e');
       return null;
-    }
-  }
-
-  Future<void> _loadNotifyState() async {
-    try {
-      final token = await _getToken();
-      if (token == null) return;
-      _cachedToken = token;
-      final doc = await FirebaseFirestore.instance
-          .collection(_kSubCollection)
-          .doc(token)
-          .get();
-      if (mounted) setState(() => _notifyChecked = doc.exists);
-    } catch (e) {
-      print('_loadNotifyState error: $e');
     }
   }
 

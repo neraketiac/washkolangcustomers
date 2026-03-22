@@ -6,17 +6,23 @@ import 'package:washkolangcustomer/model/model_rider_availability.dart';
 // slot key → display label
 const _slotLabels = {
   'slot7to9': '7am-9am',
-  'slot9to12': '9am-12pm',
-  'slot12to4': '12pm-4pm',
-  'slot4to9': '4pm-9pm',
+  'slot9to10': '9am-10am',
+  'slot10to12': '10am-12pm',
+  'slot1to3': '1pm-3pm',
+  'slot3to5': '3pm-5pm',
+  'slot5to7': '5pm-7pm',
+  'slot7to9pm': '7pm-9pm',
 };
 
 // slot key → end hour (24h) — slot is disabled if current time >= end hour on today
 const _slotEndHour = {
   'slot7to9': 9,
-  'slot9to12': 12,
-  'slot12to4': 16,
-  'slot4to9': 21,
+  'slot9to10': 10,
+  'slot10to12': 12,
+  'slot1to3': 15,
+  'slot3to5': 17,
+  'slot5to7': 19,
+  'slot7to9pm': 21,
 };
 
 bool _isSlotPast(DateTime date, String slotKey) {
@@ -172,12 +178,18 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
     switch (key) {
       case 'slot7to9':
         return avail.slot7to9;
-      case 'slot9to12':
-        return avail.slot9to12;
-      case 'slot12to4':
-        return avail.slot12to4;
-      case 'slot4to9':
-        return avail.slot4to9;
+      case 'slot9to10':
+        return avail.slot9to10;
+      case 'slot10to12':
+        return avail.slot10to12;
+      case 'slot1to3':
+        return avail.slot1to3;
+      case 'slot3to5':
+        return avail.slot3to5;
+      case 'slot5to7':
+        return avail.slot5to7;
+      case 'slot7to9pm':
+        return avail.slot7to9pm;
       default:
         return false;
     }
@@ -524,9 +536,12 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                     runSpacing: 4,
                     children: [
                       _legendItem(const Color(0xFF43A047), '7am-9am'),
-                      _legendItem(const Color(0xFF1E88E5), '9am-12pm'),
-                      _legendItem(const Color(0xFFFB8C00), '12pm-4pm'),
-                      _legendItem(const Color(0xFF8E24AA), '4pm-9pm'),
+                      _legendItem(const Color(0xFF00ACC1), '9am-10am'),
+                      _legendItem(const Color(0xFF1E88E5), '10am-12pm'),
+                      _legendItem(const Color(0xFFFB8C00), '1pm-3pm'),
+                      _legendItem(const Color(0xFFE53935), '3pm-5pm'),
+                      _legendItem(const Color(0xFF8E24AA), '5pm-7pm'),
+                      _legendItem(const Color(0xFF3949AB), '7pm-9pm'),
                     ],
                   ),
 
@@ -615,9 +630,12 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
   List<Widget> _slotBadges(ModelRiderAvailability avail, bool isSelected) {
     final slotColors = {
       'slot7to9': const Color(0xFF43A047),
-      'slot9to12': const Color(0xFF1E88E5),
-      'slot12to4': const Color(0xFFFB8C00),
-      'slot4to9': const Color(0xFF8E24AA),
+      'slot9to10': const Color(0xFF00ACC1),
+      'slot10to12': const Color(0xFF1E88E5),
+      'slot1to3': const Color(0xFFFB8C00),
+      'slot3to5': const Color(0xFFE53935),
+      'slot5to7': const Color(0xFF8E24AA),
+      'slot7to9pm': const Color(0xFF3949AB),
     };
     final active = <Color>[];
     for (final key in _slotLabels.keys) {
@@ -649,9 +667,12 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
   List<Widget> _buildSlotChips(ModelRiderAvailability avail) {
     final colors = {
       'slot7to9': const Color(0xFF43A047),
-      'slot9to12': const Color(0xFF1E88E5),
-      'slot12to4': const Color(0xFFFB8C00),
-      'slot4to9': const Color(0xFF8E24AA),
+      'slot9to10': const Color(0xFF00ACC1),
+      'slot10to12': const Color(0xFF1E88E5),
+      'slot1to3': const Color(0xFFFB8C00),
+      'slot3to5': const Color(0xFFE53935),
+      'slot5to7': const Color(0xFF8E24AA),
+      'slot7to9pm': const Color(0xFF3949AB),
     };
 
     return _slotLabels.entries.map((e) {
