@@ -1,4 +1,3 @@
-// Firebase Messaging Service Worker — required for background push notifications
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
@@ -16,9 +15,30 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title ?? '🛵 Rider Update';
   const body  = payload.notification?.body  ?? 'Rider is now available!';
+  const url   = payload.data?.url ?? 'https://washkolang.online';
+
   self.registration.showNotification(title, {
     body,
     icon: '/icons/Icon-192.png',
     badge: '/icons/Icon-192.png',
+    tag: 'rider-status',       // replaces previous notification instead of stacking
+    renotify: true,            // still vibrates/sounds even if replacing same tag
+    data: { url },
   });
+});
+
+// Open or focus the app when notification is tapped
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url ?? 'https://washkolang.online';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.startsWith('https://washkolang.online') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
 });

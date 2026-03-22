@@ -44,24 +44,16 @@ Future<void> _notifyAllSubscribers() async {
 
   if (tokens.isEmpty) return;
 
-  await http
-      .post(
-        Uri.parse(_kPushServer),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'tokens': tokens,
-          'title': '🛵 Rider is Available!',
-          'body': 'Your rider is now online and sharing location.',
-          'url': 'https://washkolang.online',
-        }),
-      )
-      .then((response) {
-        if (response.statusCode == 200) {
-          print('FCM push successful: ${response.body}');
-        } else {
-          print('FCM push failed [${response.statusCode}]: ${response.body}');
-        }
-      });
+  await http.post(
+    Uri.parse(_kPushServer),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'tokens': tokens,
+      'title': 'Rider is Available!',
+      'body': 'Your rider is now online and sharing location.',
+      'url': 'https://washkolang.online',
+    }),
+  );
 }
 
 // ===================== INLINE MAP WIDGET =====================
@@ -73,15 +65,15 @@ class RiderLocationWidget extends StatefulWidget {
   State<RiderLocationWidget> createState() => _RiderLocationWidgetState();
 }
 
-// slot key → display label (same as pickup_booking.dart)
+// slot key -> display label
 const _scheduleSlotLabels = {
-  'slot7to9': '7am–9am',
-  'slot9to10': '9am–10am',
-  'slot10to12': '10am–12pm',
-  'slot1to3': '1pm–3pm',
-  'slot3to5': '3pm–5pm',
-  'slot5to7': '5pm–7pm',
-  'slot7to9pm': '7pm–9pm',
+  'slot7to9': '7am-9am',
+  'slot9to10': '9am-10am',
+  'slot10to12': '10am-12pm',
+  'slot1to3': '1pm-3pm',
+  'slot3to5': '3pm-5pm',
+  'slot5to7': '5pm-7pm',
+  'slot7to9pm': '7pm-9pm',
 };
 const _scheduleSlotEndHour = {
   'slot7to9': 9,
@@ -96,6 +88,7 @@ const _scheduleSlotEndHour = {
 class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   double? _lat;
   double? _lng;
+  double? _heading;
   bool _loading = true;
   bool _offline = false;
   String? _lastUpdated;
@@ -121,12 +114,11 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
           .doc(docId)
           .get();
       if (!doc.exists) {
-        if (mounted) {
+        if (mounted)
           setState(() {
             _todaySlots = [];
             _loadingSlots = false;
           });
-        }
         return;
       }
       final data = doc.data()!;
@@ -136,39 +128,31 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
         final label = entry.value;
         final enabled = data[key] == true;
         final endHour = _scheduleSlotEndHour[key] ?? 0;
-        if (enabled && now.hour < endHour) {
-          slots.add(label);
-        }
+        if (enabled && now.hour < endHour) slots.add(label);
       }
-      if (mounted) {
+      if (mounted)
         setState(() {
           _todaySlots = slots;
           _loadingSlots = false;
         });
-      }
     } catch (_) {
-      if (mounted) {
+      if (mounted)
         setState(() {
           _todaySlots = [];
           _loadingSlots = false;
         });
-      }
     }
   }
 
   void _openStream() {
     final ref = FirebaseFirestore.instance.collection(_kCollection).doc(_kDoc);
-    // Always stream — never do a one-shot get first
     _sub = ref.snapshots().listen((snap) {
       if (!snap.exists) {
-        // Doc never created yet — fully offline, no last position
-        if (mounted) {
+        if (mounted)
           setState(() {
             _loading = false;
             _offline = true;
-            // keep _lat/_lng as null
           });
-        }
         _loadTodaySlots();
         return;
       }
@@ -176,15 +160,16 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
       final isOnline = data['isOnline'] as bool? ?? true;
       final lat = (data['lat'] as num?)?.toDouble();
       final lng = (data['lng'] as num?)?.toDouble();
+      final heading = (data['heading'] as num?)?.toDouble();
       final ts = data['updatedAt'] as Timestamp?;
 
       if (mounted) {
         setState(() {
           _loading = false;
           _offline = !isOnline;
-          // Always keep last known position even when offline
           if (lat != null) _lat = lat;
           if (lng != null) _lng = lng;
+          if (heading != null) _heading = heading;
           if (ts != null) {
             final d = ts.toDate().toLocal();
             _lastUpdated =
@@ -206,7 +191,6 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
-    // Fully offline with no last known position
     if (_offline && (_lat == null || _lng == null)) {
       return Center(
         child: Padding(
@@ -291,7 +275,6 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
       );
     }
 
-    // Show map — with offline banner on top if rider stopped sharing
     return Column(
       children: [
         if (_offline)
@@ -300,7 +283,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
             padding: const EdgeInsets.symmetric(vertical: 6),
             color: Colors.orange.shade100,
             child: const Text(
-              '⚠️ Rider stopped sharing — showing last known location',
+              'Rider stopped sharing - showing last known location',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: Colors.deepOrange),
             ),
@@ -314,44 +297,147 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
             ),
           ),
         Expanded(
-          child: _MapIframe(lat: _lat!, lng: _lng!),
+          child: _LeafletMap(lat: _lat!, lng: _lng!, heading: _heading),
         ),
       ],
     );
   }
 }
 
-// ===================== MAP IFRAME =====================
+// ===================== LEAFLET MAP =====================
 
-class _MapIframe extends StatefulWidget {
+class _LeafletMap extends StatefulWidget {
   final double lat;
   final double lng;
-  const _MapIframe({required this.lat, required this.lng});
+  final double? heading;
+  const _LeafletMap({required this.lat, required this.lng, this.heading});
 
   @override
-  State<_MapIframe> createState() => _MapIframeState();
+  State<_LeafletMap> createState() => _LeafletMapState();
 }
 
-class _MapIframeState extends State<_MapIframe> {
+class _LeafletMapState extends State<_LeafletMap> {
   late final String _viewId;
+  late web.HTMLIFrameElement _iframe;
+  bool _ready = false;
+  double? _pendingLat;
+  double? _pendingLng;
+  double? _pendingHeading;
 
   @override
   void initState() {
     super.initState();
-    _viewId = 'rider-map-${DateTime.now().millisecondsSinceEpoch}';
-    final iframe = web.HTMLIFrameElement()
-      ..src =
-          'https://maps.google.com/maps?q=${Uri.encodeComponent("Rider+🛵")}@${widget.lat},${widget.lng}&z=16&output=embed'
+    _viewId = 'leaflet-map-${DateTime.now().millisecondsSinceEpoch}';
+
+    final html = _buildLeafletHtml(widget.lat, widget.lng, widget.heading);
+    final blob = web.Blob(
+      [html.toJS].toJS,
+      web.BlobPropertyBag(type: 'text/html'),
+    );
+    final url = web.URL.createObjectURL(blob);
+
+    _iframe = web.HTMLIFrameElement()
+      ..src = url
       ..style.border = 'none'
       ..style.width = '100%'
       ..style.height = '100%'
       ..allowFullscreen = true;
-    ui_web.platformViewRegistry.registerViewFactory(_viewId, (_) => iframe);
+
+    web.window.addEventListener(
+      'message',
+      (web.Event e) {
+        final msg = e as web.MessageEvent;
+        if (msg.data.dartify() == 'leaflet-ready') {
+          _ready = true;
+          if (_pendingLat != null && _pendingLng != null) {
+            _sendUpdate(_pendingLat!, _pendingLng!, _pendingHeading);
+            _pendingLat = null;
+            _pendingLng = null;
+            _pendingHeading = null;
+          }
+        }
+      }.toJS,
+    );
+
+    ui_web.platformViewRegistry.registerViewFactory(_viewId, (_) => _iframe);
+  }
+
+  void _sendUpdate(double lat, double lng, double? heading) {
+    final data = <String, dynamic>{'lat': lat, 'lng': lng};
+    if (heading != null) data['heading'] = heading;
+    _iframe.contentWindow?.postMessage(data.jsify(), '*'.toJS);
+  }
+
+  void updatePosition(double lat, double lng, double? heading) {
+    if (_ready) {
+      _sendUpdate(lat, lng, heading);
+    } else {
+      _pendingLat = lat;
+      _pendingLng = lng;
+      _pendingHeading = heading;
+    }
+  }
+
+  @override
+  void didUpdateWidget(_LeafletMap old) {
+    super.didUpdateWidget(old);
+    if (old.lat != widget.lat ||
+        old.lng != widget.lng ||
+        old.heading != widget.heading) {
+      updatePosition(widget.lat, widget.lng, widget.heading);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return HtmlElementView(viewType: _viewId);
+  }
+
+  static String _buildLeafletHtml(double lat, double lng, double? heading) {
+    // Default facing right; flip left if heading is 180-360 (westward)
+    final initialRight = (heading == null || (heading >= 0 && heading < 180));
+    return '''<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+html,body,#map{margin:0;padding:0;width:100%;height:100%;}
+.leaflet-marker-icon{transition:left 0.8s ease,top 0.8s ease !important;}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+var map=L.map('map',{zoomControl:true,attributionControl:false}).setView([$lat,$lng],16);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+var facingRight=$initialRight;
+function makeIcon(right){
+  var flip=right?'scaleX(1)':'scaleX(-1)';
+  return L.divIcon({
+    html:'<div style="font-size:28px;line-height:1;display:inline-block;transform:'+flip+';">&#x1F6F5;</div>',
+    iconSize:[36,36],iconAnchor:[18,18],className:''
+  });
+}
+var marker=L.marker([$lat,$lng],{icon:makeIcon(facingRight)}).addTo(map);
+window.parent.postMessage('leaflet-ready','*');
+window.addEventListener('message',function(e){
+  var d=e.data;
+  if(d&&d.lat!==undefined&&d.lng!==undefined){
+    if(d.heading!==undefined&&d.heading!==null){
+      var right=(d.heading>=0&&d.heading<180);
+      if(right!==facingRight){facingRight=right;marker.setIcon(makeIcon(facingRight));}
+    }
+    var ll=L.latLng(d.lat,d.lng);
+    marker.setLatLng(ll);
+    map.panTo(ll,{animate:true,duration:0.8});
+  }
+});
+</script>
+</body>
+</html>''';
   }
 }
 
@@ -370,7 +456,6 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   String? _notifyStatus;
   String? _cachedToken;
 
-  // unique session id for this browser tab
   final String _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
   Timer? _watcherTimer;
 
@@ -378,11 +463,11 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   void initState() {
     super.initState();
     _registerWatcher();
-    // Refresh lastSeen every 30s so admin stale-detection knows we're alive
     _watcherTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _updateLastSeen(),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreNotifyState());
   }
 
   Future<void> _registerWatcher() async {
@@ -397,6 +482,21 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
           .collection(_kWatchers)
           .doc(_sessionId)
           .update({'lastSeen': Timestamp.now()});
+    } catch (_) {}
+  }
+
+  Future<void> _restoreNotifyState() async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken(
+        vapidKey: _kVapidKey,
+      );
+      if (token == null) return;
+      _cachedToken = token;
+      final doc = await FirebaseFirestore.instance
+          .collection(_kSubCollection)
+          .doc(token)
+          .get();
+      if (mounted) setState(() => _notifyChecked = doc.exists);
     } catch (_) {}
   }
 
@@ -418,7 +518,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
         if (mounted) {
           setState(
             () => _notifyStatus =
-                'Notifications blocked. Click the 🔒 lock icon in the address bar → Notifications → Allow, then refresh.',
+                'Notifications blocked. Click the lock icon in the address bar, then Notifications, then Allow, then refresh.',
           );
         }
         return null;
@@ -426,10 +526,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
       if (settings.authorizationStatus != AuthorizationStatus.authorized) {
         return null;
       }
-      final token = await FirebaseMessaging.instance.getToken(
-        vapidKey: _kVapidKey,
-      );
-      return token;
+      return await FirebaseMessaging.instance.getToken(vapidKey: _kVapidKey);
     } catch (e) {
       return null;
     }
@@ -445,7 +542,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
       if (token == null) {
         setState(() {
           _notifyStatus =
-              'Notifications blocked. To enable: click the 🔒 lock icon in your browser address bar → Notifications → Allow, then refresh.';
+              'Notifications blocked. To enable: click the lock icon in your browser address bar, then Notifications, then Allow, then refresh.';
           _notifyChecked = false;
         });
         return;
@@ -495,7 +592,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                     ),
                     const Expanded(
                       child: Text(
-                        '🛵 Rider Location',
+                        'Rider Location',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
@@ -508,8 +605,6 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                   ],
                 ),
               ),
-
-              // Map
               const Expanded(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
@@ -519,8 +614,6 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                   ),
                 ),
               ),
-
-              // Notify checkbox
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
                 child: Container(
@@ -642,13 +735,12 @@ class _AdminRiderPanelState extends State<AdminRiderPanel> {
       _pushLocation(notify: true);
       _startWatcherStream();
       _timer = Timer.periodic(
-        const Duration(seconds: 15),
+        const Duration(seconds: 5),
         (_) => _pushLocation(notify: false),
       );
     } else {
       _timer?.cancel();
       _stopWatcherStream();
-      // Set isOnline: false — keeps last position for customers
       FirebaseFirestore.instance.collection(_kCollection).doc(_kDoc).update({
         'isOnline': false,
       });
@@ -658,22 +750,33 @@ class _AdminRiderPanelState extends State<AdminRiderPanel> {
   Future<void> _pushLocation({bool notify = false}) async {
     setState(() => _locating = true);
     try {
-      final completer = Completer<(double, double)>();
+      final completer = Completer<(double, double, double?)>();
       web.window.navigator.geolocation.getCurrentPosition(
         (web.GeolocationPosition pos) {
-          completer.complete((pos.coords.latitude, pos.coords.longitude));
+          final h = pos.coords.heading;
+          final heading = (h != null && !h.isNaN) ? h.toDouble() : null;
+          completer.complete((
+            pos.coords.latitude,
+            pos.coords.longitude,
+            heading,
+          ));
         }.toJS,
         (web.GeolocationPositionError err) {
           completer.completeError(err.message);
         }.toJS,
       );
-      final (lat, lng) = await completer.future;
-      await FirebaseFirestore.instance.collection(_kCollection).doc(_kDoc).set({
+      final (lat, lng, heading) = await completer.future;
+      final data = <String, dynamic>{
         'lat': lat,
         'lng': lng,
         'updatedAt': Timestamp.now(),
         'isOnline': true,
-      });
+      };
+      if (heading != null) data['heading'] = heading;
+      await FirebaseFirestore.instance
+          .collection(_kCollection)
+          .doc(_kDoc)
+          .set(data);
 
       if (notify && !_notified) {
         await _notifyAllSubscribers();
@@ -690,7 +793,7 @@ class _AdminRiderPanelState extends State<AdminRiderPanel> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text(
-        '🛵 Rider Location Sharing',
+        'Rider Location Sharing',
         style: TextStyle(fontSize: 15),
       ),
       content: _buildPanel(),
@@ -738,7 +841,7 @@ class _AdminRiderPanelState extends State<AdminRiderPanel> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'GPS updates every 15 seconds.\nCustomers can now see your location.',
+                  'GPS updates every 5 seconds.\nCustomers can now see your location.',
                   style: TextStyle(fontSize: 12, color: Colors.blueGrey),
                 ),
                 const SizedBox(height: 6),
@@ -764,7 +867,7 @@ class _AdminRiderPanelState extends State<AdminRiderPanel> {
                   const Padding(
                     padding: EdgeInsets.only(top: 4),
                     child: Text(
-                      '✅ Subscribers notified.',
+                      'Subscribers notified.',
                       style: TextStyle(fontSize: 12, color: Colors.green),
                     ),
                   ),
