@@ -1,6 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:washkolangcustomer/main.dart';
 import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
@@ -19,15 +19,14 @@ import 'package:web/web.dart' as web;
 Future<List<JobModel>> getJobsByCardNumber(String cardNumber) async {
   const String JOBS_DONE_REF = "Jobs_done";
   const String JOBS_COMPLETED_REF = "Jobs_completed";
-  final firestore = FirebaseFirestore.instance;
 
+  // Jobs live in the secondary Firebase project
   const jobCollections = [JOBS_DONE_REF, JOBS_COMPLETED_REF];
 
   List<JobModel> allJobs = [];
 
   for (final jobCollection in jobCollections) {
-    // Use .where() to only fetch this customer's jobs — avoids full collection scan
-    final snapshot = await firestore
+    final snapshot = await forthFirestore
         .collection(jobCollection)
         .where(
           'C00_CustomerId',
@@ -131,9 +130,8 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
     final parsed = int.tryParse(widget.code);
     if (parsed == null) return null;
 
-    final firestore = FirebaseFirestore.instance;
-
-    final snap = await firestore
+    // loyalty collection is on the forthWeb database
+    final snap = await forthFirestore
         .collection('loyalty')
         .where('cardNumber', isEqualTo: parsed)
         .limit(1)

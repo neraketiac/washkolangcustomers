@@ -1,5 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:washkolangcustomer/main.dart';
 import 'package:washkolangcustomer/loyalty_single.dart';
 import 'package:washkolangcustomer/pickup_booking.dart';
 import 'package:washkolangcustomer/rider_location.dart';
@@ -69,12 +69,9 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
   }
 
   Future<bool> _validateCode(String code) async {
-    // Reject if contains #
-    if (code.contains('#')) {
-      return false;
-    }
+    if (code.contains('#')) return false;
 
-    final snap = await FirebaseFirestore.instance
+    final snap = await forthFirestore
         .collection('loyalty')
         .where('cardNumber', isEqualTo: int.tryParse(code) ?? 0)
         .limit(1)

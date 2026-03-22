@@ -4,11 +4,26 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:washkolangcustomer/enterloyaltycode.dart';
 import 'firebase_options.dart';
 
+/// Default Firestore — loyalty, rider_location, push_subscriptions, etc.
 late FirebaseFirestore firestore;
+
+/// Secondary Firestore — Jobs_done & Jobs_completed
+late FirebaseFirestore forthFirestore;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Primary app (zpos-d985c)
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  firestore = FirebaseFirestore.instance;
+
+  // Secondary app (signuptest-53277) — jobs database
+  final forthApp = await Firebase.initializeApp(
+    name: 'forthWeb',
+    options: DefaultFirebaseOptions.forthWeb,
+  );
+  forthFirestore = FirebaseFirestore.instanceFor(app: forthApp);
+
   runApp(const MyApp());
 }
 

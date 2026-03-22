@@ -50,6 +50,16 @@ class DefaultFirebaseOptions {
     storageBucket: 'zpos-d985c.firebasestorage.app',
   );
 
+  // Secondary Firebase project — Jobs_done & Jobs_completed live here
+  static const FirebaseOptions forthWeb = FirebaseOptions(
+    apiKey: 'AIzaSyCdITzOwEzJ0S3BxeiFWzJyG_QeetguJeU',
+    appId: '1:622437507678:web:4a0230dabb6e6161d5cacf',
+    messagingSenderId: '622437507678',
+    projectId: 'signuptest-53277',
+    authDomain: 'signuptest-53277.firebaseapp.com',
+    storageBucket: 'signuptest-53277.firebasestorage.app',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAn9Dmm_W9HNsbOj6K8RApfCf7zP4bfriI',
     appId: '1:368198382683:android:124fadc4511c30ef41fb7e',
