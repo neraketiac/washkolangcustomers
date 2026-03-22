@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web;
 
+const _kWatchers = 'rider_watchers';
 const _kCollection = 'rider_location';
 const _kDoc = 'current';
 const _kSubCollection = 'push_subscriptions';
@@ -358,10 +359,25 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   String? _notifyStatus;
   String? _cachedToken;
 
+  // unique session id for this browser tab
+  final String _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+
   @override
   void initState() {
     super.initState();
-    // No token fetch on startup — only request permission when user opts in
+    _registerWatcher();
+  }
+
+  Future<void> _registerWatcher() async {
+    await FirebaseFirestore.instance.collection(_kWatchers).doc(_sessionId).set(
+      {'joinedAt': Timestamp.now()},
+    );
+  }
+
+  @override
+  void dispose() {
+    FirebaseFirestore.instance.collection(_kWatchers).doc(_sessionId).delete();
+    super.dispose();
   }
 
   Future<String?> _getToken() async {
@@ -564,11 +580,30 @@ class _AdminRiderPanelState extends State<AdminRiderPanel> {
   bool _notified = false;
   String? _error;
   Timer? _timer;
+  int _watcherCount = 0;
+  StreamSubscription? _watcherSub;
 
   @override
   void dispose() {
     _timer?.cancel();
+    _watcherSub?.cancel();
     super.dispose();
+  }
+
+  void _startWatcherStream() {
+    _watcherSub?.cancel();
+    _watcherSub = FirebaseFirestore.instance
+        .collection(_kWatchers)
+        .snapshots()
+        .listen((snap) {
+          if (mounted) setState(() => _watcherCount = snap.docs.length);
+        });
+  }
+
+  void _stopWatcherStream() {
+    _watcherSub?.cancel();
+    _watcherSub = null;
+    if (mounted) setState(() => _watcherCount = 0);
   }
 
   void _toggleSharing(bool val) {
@@ -578,12 +613,14 @@ class _AdminRiderPanelState extends State<AdminRiderPanel> {
     });
     if (val) {
       _pushLocation(notify: true);
+      _startWatcherStream();
       _timer = Timer.periodic(
         const Duration(seconds: 15),
         (_) => _pushLocation(notify: false),
       );
     } else {
       _timer?.cancel();
+      _stopWatcherStream();
       FirebaseFirestore.instance.collection(_kCollection).doc(_kDoc).delete();
     }
   }
@@ -673,6 +710,25 @@ class _AdminRiderPanelState extends State<AdminRiderPanel> {
                 const Text(
                   'GPS updates every 15 seconds.\nCustomers can now see your location.',
                   style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.remove_red_eye,
+                      size: 15,
+                      color: Colors.blueGrey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_watcherCount ${_watcherCount == 1 ? 'customer' : 'customers'} watching',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.blueGrey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
                 if (_notified)
                   const Padding(
