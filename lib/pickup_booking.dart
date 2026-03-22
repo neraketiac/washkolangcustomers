@@ -1098,34 +1098,36 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
 
           // ── contact warning ──
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFFCC02), width: 1),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('⚠️', style: TextStyle(fontSize: 16)),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'To help ensure your pickup goes smoothly, kindly provide your complete address or contact number so we can easily reach you.\n\n'
-                    'If we’re unable to contact you, we may not be able to process your order. Thank you very much for your understanding. 🙏\n\n'
-                    'Order status tracking is currently available only for existing customers using their loyalty card number.\n\n'
-                    'For new customers, the quick booking feature is not trackable. Rest assured, our staff will contact you to confirm your booking and keep you updated on its status.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF795548),
-                      height: 1.5,
+
+          if (widget.cardNumber == 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFCC02), width: 1),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('⚠️', style: TextStyle(fontSize: 16)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'To help ensure your pickup goes smoothly, kindly provide your complete address or contact number so we can easily reach you.\n\n'
+                      'If we’re unable to contact you, we may not be able to process your order. Thank you very much for your understanding. 🙏\n\n'
+                      'Order status tracking is currently available only for existing customers using their loyalty card number.\n\n'
+                      'For new customers, the quick booking feature is not trackable. Rest assured, our staff will contact you to confirm your booking and keep you updated on its status.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF795548),
+                        height: 1.5,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           if (_saveError != null) ...[
             const SizedBox(height: 10),

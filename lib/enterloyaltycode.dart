@@ -14,7 +14,10 @@ class EnterLoyaltyCode extends StatefulWidget {
 
 class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
     with TickerProviderStateMixin {
-  static const String _version = '1.11';
+  static const String _version = String.fromEnvironment(
+    'BUILD_TIME',
+    defaultValue: 'dev',
+  );
   static const String _storageKey = 'customer_code';
   late AnimationController controller;
   late Animation<double> animation;
@@ -223,7 +226,7 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
             ),
             const SizedBox(height: 4),
             const Text(
-              "Loyalty Card Entry v$_version",
+              "Loyalty Card Entry",
               style: TextStyle(fontSize: 13, color: Colors.blueGrey),
             ),
             const SizedBox(height: 16),
@@ -401,6 +404,11 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              _version,
+              style: TextStyle(fontSize: 9, color: Color(0x44607D8B)),
             ),
           ],
         ),
