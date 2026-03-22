@@ -372,21 +372,37 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
 
   // unique session id for this browser tab
   final String _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+  Timer? _watcherTimer;
 
   @override
   void initState() {
     super.initState();
     _registerWatcher();
+    // Refresh lastSeen every 30s so admin stale-detection knows we're alive
+    _watcherTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _updateLastSeen(),
+    );
   }
 
   Future<void> _registerWatcher() async {
     await FirebaseFirestore.instance.collection(_kWatchers).doc(_sessionId).set(
-      {'joinedAt': Timestamp.now()},
+      {'joinedAt': Timestamp.now(), 'lastSeen': Timestamp.now()},
     );
+  }
+
+  Future<void> _updateLastSeen() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection(_kWatchers)
+          .doc(_sessionId)
+          .update({'lastSeen': Timestamp.now()});
+    } catch (_) {}
   }
 
   @override
   void dispose() {
+    _watcherTimer?.cancel();
     FirebaseFirestore.instance.collection(_kWatchers).doc(_sessionId).delete();
     super.dispose();
   }
