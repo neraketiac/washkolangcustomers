@@ -17,40 +17,32 @@ import 'package:web/web.dart' as web;
 // ================= JOB QUERY FUNCTION =================
 
 Future<List<JobModel>> getJobsByCardNumber(String cardNumber) async {
-  // const String JOBS_QUEUE_REF = "Jobs_queue";
-  // const String JOBS_ONGOING_REF = "Jobs_ongoing";
   const String JOBS_DONE_REF = "Jobs_done";
   const String JOBS_COMPLETED_REF = "Jobs_completed";
   final firestore = FirebaseFirestore.instance;
 
-  const jobCollections = [
-    //JOBS_QUEUE_REF,
-    //JOBS_ONGOING_REF,
-    JOBS_DONE_REF,
-    JOBS_COMPLETED_REF,
-  ];
+  const jobCollections = [JOBS_DONE_REF, JOBS_COMPLETED_REF];
 
   List<JobModel> allJobs = [];
 
   for (final jobCollection in jobCollections) {
-    final snapshot = await firestore.collection(jobCollection).get();
+    // Use .where() to only fetch this customer's jobs — avoids full collection scan
+    final snapshot = await firestore
+        .collection(jobCollection)
+        .where(
+          'C00_CustomerId',
+          isEqualTo: int.tryParse(cardNumber) ?? cardNumber,
+        )
+        .get();
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
-      final dynamic rawId = data['C00_CustomerId'];
-
-      if (rawId?.toString() == cardNumber) {
-        data['docId'] = doc.id;
-        final job = JobModel.fromJson(data);
-
-        allJobs.add(job);
-      }
+      data['docId'] = doc.id;
+      allJobs.add(JobModel.fromJson(data));
     }
   }
 
-  // Sort latest first
   allJobs.sort((a, b) => b.dateD.compareTo(a.dateD));
-
   return allJobs;
 }
 
@@ -67,12 +59,16 @@ class MyLoyaltyCard extends StatefulWidget {
 
 class _MyLoyaltyCardState extends State<MyLoyaltyCard>
     with TickerProviderStateMixin {
+  static const String _storageKey = 'customer_code';
+  static const String _rememberKey = 'remember_me';
+
   int? _selectedIndex;
   Future<LoyaltyModel?>? _future;
   late AnimationController controller;
   late Animation<double> animation;
   late AnimationController controllerbubble;
   late Animation<double> animationbubble;
+  bool _rememberMe = false;
   final Map<int, String> promoErrorMessages = {
     0: "Eligible for promo",
     1: "On review – partial eligible, unpaid",
@@ -102,6 +98,9 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   void initState() {
     super.initState();
     _future = _fetchLoyalty();
+
+    // Load saved remember-me preference
+    _rememberMe = web.window.localStorage.getItem(_rememberKey) == 'true';
 
     controller = AnimationController(
       vsync: this,
@@ -765,11 +764,38 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
             const SizedBox(height: 20),
 
+            // Remember me + Back row
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Checkbox(
+                  value: _rememberMe,
+                  onChanged: (v) {
+                    final val = v ?? false;
+                    setState(() => _rememberMe = val);
+                    web.window.localStorage.setItem(
+                      _rememberKey,
+                      val.toString(),
+                    );
+                  },
+                  activeColor: Colors.blueAccent,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+                const Text(
+                  'Remember me',
+                  style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                ),
+                const SizedBox(width: 16),
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    if (_rememberMe) {
+                      web.window.localStorage.setItem(_storageKey, widget.code);
+                    } else {
+                      web.window.localStorage.removeItem(_storageKey);
+                    }
+                    Navigator.pop(context);
+                  },
                   child: const Text(
                     "Back",
                     style: TextStyle(
@@ -823,7 +849,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                         ),
                         SizedBox(width: 5),
                         Text(
-                          'Pickup now',
+                          'Pickup',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -861,7 +887,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                         Text('💬', style: TextStyle(fontSize: 12)),
                         SizedBox(width: 5),
                         Text(
-                          'Message via FB',
+                          'Messenger',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

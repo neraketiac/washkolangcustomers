@@ -50,10 +50,9 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
 
   @override
   void dispose() {
+    controller.dispose();
     controllerbubble.dispose();
     _controller.dispose();
-    super.dispose();
-    //_controller.dispose();
     super.dispose();
   }
 
@@ -124,11 +123,14 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
   }
 
   void _navigateToCard(String code) {
+    _controller.clear();
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => MyLoyaltyCard(code)),
     ).then((_) {
-      setState(() => _loading = false);
+      // Clear saved code so auto-login doesn't re-trigger on back
+      web.window.localStorage.removeItem(_storageKey);
+      if (mounted) setState(() => _loading = false);
     });
   }
 
@@ -284,13 +286,14 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
             //     showBatchTwoWeeksChecking(context);
             //   },
             // ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 5),
 
             if (_error != null)
               Text(
                 _error!,
                 style: const TextStyle(color: Colors.redAccent, fontSize: 13),
               ),
+            const SizedBox(height: 5),
 
             // Pickup + Facebook row
             Row(
@@ -326,7 +329,7 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
                         ),
                         SizedBox(width: 5),
                         Text(
-                          'Pickup now',
+                          'Pickup',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -364,7 +367,7 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
                         Text('💬', style: TextStyle(fontSize: 12)),
                         SizedBox(width: 5),
                         Text(
-                          'Message via FB',
+                          'Messenger',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

@@ -33,6 +33,23 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script>
+    // Register Firebase Messaging Service Worker and wait for it to be ready
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then(reg => {
+          console.log('SW registered:', reg.scope);
+          // Wait until the SW is active
+          if (reg.active) return;
+          return new Promise(resolve => {
+            (reg.installing || reg.waiting).addEventListener('statechange', e => {
+              if (e.target.state === 'activated') resolve();
+            });
+          });
+        })
+        .catch(err => console.warn('SW registration failed:', err));
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

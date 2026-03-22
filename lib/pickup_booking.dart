@@ -11,6 +11,24 @@ const _slotLabels = {
   'slot4to9': '4pm-9pm',
 };
 
+// slot key → end hour (24h) — slot is disabled if current time >= end hour on today
+const _slotEndHour = {
+  'slot7to9': 9,
+  'slot9to12': 12,
+  'slot12to4': 16,
+  'slot4to9': 21,
+};
+
+bool _isSlotPast(DateTime date, String slotKey) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(date.year, date.month, date.day);
+  if (day.isBefore(today)) return true;
+  if (day.isAfter(today)) return false;
+  // Same day — check if end hour has passed
+  return now.hour >= (_slotEndHour[slotKey] ?? 0);
+}
+
 class PickupBookingScreen extends StatefulWidget {
   final String? prefillName;
   final String? prefillContact;
@@ -42,6 +60,7 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
   final _nameController = TextEditingController();
   final _contactController = TextEditingController();
   final _addressController = TextEditingController();
+  final _remarksController = TextEditingController();
   bool _saving = false;
   String? _saveError;
 
@@ -59,10 +78,18 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
     _nameController.dispose();
     _contactController.dispose();
     _addressController.dispose();
+    _remarksController.dispose();
     super.dispose();
   }
 
+  String _monthCacheKey(DateTime month) =>
+      '${month.year}-${month.month.toString().padLeft(2, '0')}';
+
   Future<void> _loadMonthAvailability(DateTime month) async {
+    final key = _monthCacheKey(month);
+    // Skip fetch if already cached
+    if (_availabilityCache.keys.any((k) => k.startsWith(key))) return;
+
     setState(() => _loadingAvailability = true);
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 0);
@@ -127,12 +154,33 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
 
   void _onDayTap(DateTime day) {
     final avail = _availabilityFor(day);
-    if (avail == null || !avail.hasAnySlot) return;
+    if (avail == null) return;
+    // Check if at least one slot is enabled AND not past
+    final hasActive = _slotLabels.keys.any((key) {
+      final enabled = _slotValue(avail, key);
+      return enabled && !_isSlotPast(day, key);
+    });
+    if (!hasActive) return;
     setState(() {
       _selectedDate = day;
       _selectedAvailability = avail;
       _selectedSlot = null;
     });
+  }
+
+  bool _slotValue(ModelRiderAvailability avail, String key) {
+    switch (key) {
+      case 'slot7to9':
+        return avail.slot7to9;
+      case 'slot9to12':
+        return avail.slot9to12;
+      case 'slot12to4':
+        return avail.slot12to4;
+      case 'slot4to9':
+        return avail.slot4to9;
+      default:
+        return false;
+    }
   }
 
   Future<void> _saveOrder() async {
@@ -150,10 +198,69 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
       _saving = true;
       _saveError = null;
     });
+
+    // ── Re-verify slot availability from Firestore before saving ──
+    try {
+      final docId = _docId(_selectedDate!);
+      final freshDoc = await FirebaseFirestore.instance
+          .collection('Rider_schedule')
+          .doc(docId)
+          .get();
+
+      if (!freshDoc.exists) {
+        setState(() {
+          _saving = false;
+          _saveError =
+              'This schedule is no longer available. Please go back and select another date.';
+        });
+        return;
+      }
+
+      final freshAvail = ModelRiderAvailability.fromMap(freshDoc.data()!);
+
+      // Update cache with latest data
+      _availabilityCache[docId] = freshAvail;
+
+      // Find the slot key for the selected label
+      final slotKey = _slotLabels.entries
+          .firstWhere(
+            (e) => e.value == _selectedSlot,
+            orElse: () => const MapEntry('', ''),
+          )
+          .key;
+
+      if (slotKey.isEmpty || !_slotValue(freshAvail, slotKey)) {
+        setState(() {
+          _saving = false;
+          _selectedSlot = null;
+          _selectedAvailability = freshAvail;
+          _saveError =
+              'Sorry, the "$_selectedSlot" slot is no longer available. Please select another time slot.';
+        });
+        return;
+      }
+
+      if (_isSlotPast(_selectedDate!, slotKey)) {
+        setState(() {
+          _saving = false;
+          _saveError =
+              'This time slot has already passed. Please select another.';
+        });
+        return;
+      }
+    } catch (e) {
+      setState(() {
+        _saving = false;
+        _saveError = 'Could not verify schedule. Please try again.';
+      });
+      return;
+    }
+
     final order = LoyaltyOrderOnlineModel(
       name: name,
       contact: _contactController.text.trim(),
       address: _addressController.text.trim(),
+      remarks: _remarksController.text.trim(),
       scheduleDate: _selectedDate!,
       timeSlot: _selectedSlot!,
       createdAt: Timestamp.now(),
@@ -320,7 +427,14 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                         );
                         final isPast = date.isBefore(today);
                         final avail = _availabilityFor(date);
-                        final hasSlot = avail != null && avail.hasAnySlot;
+                        // Has slots that are enabled AND not time-expired
+                        final hasSlot =
+                            avail != null &&
+                            _slotLabels.keys.any(
+                              (key) =>
+                                  _slotValue(avail, key) &&
+                                  !_isSlotPast(date, key),
+                            );
                         final isSelected =
                             _selectedDate != null &&
                             _selectedDate!.year == date.year &&
@@ -499,14 +613,19 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
 
   /// tiny colored dots per slot
   List<Widget> _slotBadges(ModelRiderAvailability avail, bool isSelected) {
+    final slotColors = {
+      'slot7to9': const Color(0xFF43A047),
+      'slot9to12': const Color(0xFF1E88E5),
+      'slot12to4': const Color(0xFFFB8C00),
+      'slot4to9': const Color(0xFF8E24AA),
+    };
     final active = <Color>[];
-    if (avail.slot7to9) active.add(const Color(0xFF43A047));
-    if (avail.slot9to12) active.add(const Color(0xFF1E88E5));
-    if (avail.slot12to4) active.add(const Color(0xFFFB8C00));
-    if (avail.slot4to9) active.add(const Color(0xFF8E24AA));
-
+    for (final key in _slotLabels.keys) {
+      if (_slotValue(avail, key) && !_isSlotPast(avail.date, key)) {
+        active.add(slotColors[key]!);
+      }
+    }
     if (active.isEmpty) return [];
-
     return [
       Wrap(
         alignment: WrapAlignment.center,
@@ -528,12 +647,6 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
   }
 
   List<Widget> _buildSlotChips(ModelRiderAvailability avail) {
-    final entries = {
-      'slot7to9': avail.slot7to9,
-      'slot9to12': avail.slot9to12,
-      'slot12to4': avail.slot12to4,
-      'slot4to9': avail.slot4to9,
-    };
     final colors = {
       'slot7to9': const Color(0xFF43A047),
       'slot9to12': const Color(0xFF1E88E5),
@@ -541,20 +654,30 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
       'slot4to9': const Color(0xFF8E24AA),
     };
 
-    return entries.entries.where((e) => e.value).map((e) {
-      final label = _slotLabels[e.key]!;
-      final color = colors[e.key]!;
+    return _slotLabels.entries.map((e) {
+      final key = e.key;
+      final label = e.value;
+      final enabled = _slotValue(avail, key);
+      if (!enabled) return const SizedBox.shrink();
+
+      final isPast = _isSlotPast(_selectedDate!, key);
+      final color = colors[key]!;
       final isSelected = _selectedSlot == label;
+
       return GestureDetector(
-        onTap: () => setState(() => _selectedSlot = label),
+        onTap: isPast ? null : () => setState(() => _selectedSlot = label),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? color : Colors.white,
+            color: isPast
+                ? Colors.grey.shade200
+                : isSelected
+                ? color
+                : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color),
-            boxShadow: isSelected
+            border: Border.all(color: isPast ? Colors.grey.shade400 : color),
+            boxShadow: isSelected && !isPast
                 ? [
                     BoxShadow(
                       color: color.withValues(alpha: 0.4),
@@ -564,9 +687,13 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                 : [],
           ),
           child: Text(
-            label,
+            isPast ? '$label (passed)' : label,
             style: TextStyle(
-              color: isSelected ? Colors.white : color,
+              color: isPast
+                  ? Colors.grey.shade500
+                  : isSelected
+                  ? Colors.white
+                  : color,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
@@ -698,6 +825,13 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                   maxLines: 2,
                   onChanged: (_) => setState(() {}),
                 ),
+                const SizedBox(height: 12),
+                _formField(
+                  controller: _remarksController,
+                  label: 'Remarks',
+                  hint: 'Any special instructions (optional)',
+                  maxLines: 2,
+                ),
               ],
             ),
           ),
@@ -718,8 +852,10 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'To make sure your pickup goes smoothly, please provide a phone number or Facebook Messenger name so we can reach you.\n\n'
-                    'If we are unable to contact you, we may not be able to process your order. Thank you for your understanding! 🙏',
+                    'To help ensure your pickup goes smoothly, kindly provide your complete address or contact number so we can easily reach you.\n\n'
+                    'If we’re unable to contact you, we may not be able to process your order. Thank you very much for your understanding. 🙏\n\n'
+                    'Order status tracking is currently available only for existing customers using their loyalty card number.\n\n'
+                    'For new customers, the quick booking feature is not trackable. Rest assured, our staff will contact you to confirm your booking and keep you updated on its status.',
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF795548),
@@ -822,12 +958,14 @@ class _PickupBookingScreenState extends State<PickupBookingScreen> {
         TextField(
           controller: controller,
           maxLines: maxLines,
+          maxLength: 100,
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.blueGrey.shade200, fontSize: 13),
             filled: true,
             fillColor: Colors.blue.shade50,
+            counterStyle: const TextStyle(fontSize: 10, color: Colors.blueGrey),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,

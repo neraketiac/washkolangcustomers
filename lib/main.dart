@@ -8,11 +8,7 @@ late FirebaseFirestore firestore;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize Firebase
-
-  // 🔹 MAIN project
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   runApp(const MyApp());
 }
 
