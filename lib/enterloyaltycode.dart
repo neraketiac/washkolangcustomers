@@ -94,11 +94,11 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
     }
 
     // Admin code — open location sharing panel
-    if (code == '1346792580') {
-      _controller.clear();
-      showDialog(context: context, builder: (_) => const AdminRiderPanel());
-      return;
-    }
+    // if (code == '1346792580') {
+    //   _controller.clear();
+    //   showDialog(context: context, builder: (_) => const AdminRiderPanel());
+    //   return;
+    // }
 
     setState(() {
       _loading = true;
