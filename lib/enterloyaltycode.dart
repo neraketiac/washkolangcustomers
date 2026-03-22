@@ -14,6 +14,7 @@ class EnterLoyaltyCode extends StatefulWidget {
 
 class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
     with TickerProviderStateMixin {
+  static const String _version = '1.11';
   static const String _storageKey = 'customer_code';
   late AnimationController controller;
   late Animation<double> animation;
@@ -222,7 +223,7 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
             ),
             const SizedBox(height: 4),
             const Text(
-              "Loyalty Card Entry",
+              "Loyalty Card Entry v$_version",
               style: TextStyle(fontSize: 13, color: Colors.blueGrey),
             ),
             const SizedBox(height: 16),
@@ -256,41 +257,18 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
 
             _buildKeypad(),
 
-            const SizedBox(height: 14),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _glowButton(
-                  text: _loading ? "Checking..." : "View",
-                  icon: Icons.local_laundry_service,
-                  onTap: _login,
-                ),
-                const SizedBox(width: 12),
-                _softButton(
-                  text: "Clear",
-                  onTap: () {
-                    setState(() => _controller.clear());
-                  },
-                ),
-              ],
-            ),
-
-            // _glowButton(
-            //   text: "Batch Two Weeks",
-            //   icon: Icons.local_laundry_service,
-            //   onTap: () {
-            //     showBatchTwoWeeksChecking(context);
-            //   },
-            // ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 8),
 
             if (_error != null)
-              Text(
-                _error!,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                ),
               ),
-            const SizedBox(height: 5),
+
+            const SizedBox(height: 25),
 
             // Pickup + Facebook row
             Row(
@@ -466,24 +444,79 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
   // ================= KEYPAD =================
 
   Widget _buildKeypad() {
-    final keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "#", "0", "⌫"];
+    // Layout: 1-9 in rows, then ⌫ / 0 / ✓
+    const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
     return SizedBox(
       width: 250,
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: keys.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 1.2,
-        ),
-        itemBuilder: (_, index) {
-          final value = keys[index];
-          return _keyButton(value);
-        },
+      child: Column(
+        children: [
+          // Digit rows 1–9
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: digits.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1.2,
+            ),
+            itemBuilder: (_, i) => _keyButton(digits[i]),
+          ),
+          const SizedBox(height: 10),
+          // Bottom row: ⌫  0  ✓
+          SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                Expanded(child: _keyButton("⌫")),
+                const SizedBox(width: 10),
+                Expanded(child: _keyButton("0")),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _loading ? null : _login,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blueAccent.withValues(alpha: 0.5),
+                            blurRadius: 8,
+                            offset: const Offset(2, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: _loading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                '✓',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -505,8 +538,9 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
         });
       },
       child: Container(
+        height: 56,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(.85),
+          color: Colors.white.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -531,60 +565,4 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
   }
 
   // ================= BUTTONS =================
-
-  Widget _glowButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: _loading ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
-          ),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(color: Colors.blueAccent.withOpacity(.6), blurRadius: 15),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _softButton({required String text, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Colors.blueAccent),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.blueAccent,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
 }
