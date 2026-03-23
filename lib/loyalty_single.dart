@@ -168,15 +168,10 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
             "• The promo aims to reward customers who continuously use our laundry service for two (2) weeks.\n\n"
             "• “Using our service” means availing the laundry service and settling the payment on time for each transaction.\n\n"
             "• If a payment is delayed or unpaid, the time will still be counted within the two-week period. In such cases, the promo eligibility may be reset or removed.\n\n"
-            // "• Ex. Job5 Ordered on January 1.\n"
-            // "•     Job5 Payment settled on January 16.\n"
-            // "•     Job5 will be tagged as not eligible anymore, include Job4, Job3, Job2, Job1.\n"
-            // "•     Job6 will be the starting of eligible stamp.\n"
-            // "•     In case payment are settled on time, but Job6 is above 14 days, same process will be implemented.\n"
-            // "•     If this happened again, it will reset the process.\n"
             "• The promo period begins on the date when there are no payment or service violations.\n\n"
-            "• Promo is only applicable in Full Service 155 Php(1load=1star). Any modifications would still be considered as 1 star.\n\n"
+            "• Promo is only applicable in Full Service 155 Php (1 load = 1 star). Any modifications would still be considered as 1 star.\n\n"
             "• Customers who successfully complete ten (10) paid laundry services within the promo conditions will receive one (1) free wash.\n\n"
+            "• The free wash may only be claimed upon reaching a minimum of ten (10) stamps and is redeemable on the customer’s next visit only, not within the same transaction.\n\n"
             "• The loyalty promo is non-transferable and intended for the same customer account.\n\n"
             "• Management reserves the right to adjust or clarify the promo terms if necessary to maintain fairness and service quality.",
           ),
@@ -383,46 +378,6 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                     _infoRow("Name", loyalty.name),
                     _infoRow("Contact", loyalty.contact),
                     _infoRow("Address", loyalty.address),
-
-                    if (jobsAll
-                                .where((j) => j.unpaid)
-                                .fold<int>(0, (sum, j) => sum + j.finalPrice) -
-                            jobsAll
-                                .where((j) => j.unpaid)
-                                .fold<int>(
-                                  0,
-                                  (sum, j) =>
-                                      sum +
-                                      j.paidCashAmount +
-                                      (j.paidGCashverified
-                                          ? j.paidGCashAmount
-                                          : 0),
-                                ) >
-                        0)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Row(
-                          children: [
-                            const Text(
-                              "Total Balance: ",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: Colors.blueGrey,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                "₱${NumberFormat('#,##0.00').format(jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.finalPrice) - jobsAll.where((j) => j.unpaid).fold<int>(0, (sum, j) => sum + j.paidCashAmount + (j.paidGCashverified ? j.paidGCashAmount : 0)))}",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
 
                     const SizedBox(height: 18),
 
@@ -1139,7 +1094,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
               Expanded(
                 flex: 2,
                 child: Text(
-                  "Price",
+                  "Stamps",
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -1233,24 +1188,10 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                 // ),
                 Expanded(
                   flex: 2,
-                  child: () {
-                    final paid =
-                        job.paidCashAmount +
-                        (job.paidGCashverified ? job.paidGCashAmount : 0);
-                    final isEqual = job.finalPrice == paid;
-                    final isPaidZero = paid == 0;
-                    return Text(
-                      (isEqual || isPaidZero)
-                          ? "₱${job.finalPrice}"
-                          : "₱${job.finalPrice} / ₱$paid",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: (isEqual || isPaidZero)
-                            ? Colors.black
-                            : Colors.orange.shade800,
-                      ),
-                    );
-                  }(),
+                  child: Text(
+                    "${job.promoCounter}",
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
                 Expanded(
                   flex: 2,
@@ -1365,9 +1306,6 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   }
 
   Widget _jobDetailCard(JobModel job) {
-    final int promoFreeCount = job.items
-        .where((item) => item.itemUniqueId == promoFree.itemUniqueId)
-        .length;
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
@@ -1385,25 +1323,7 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
             DateFormat('MMMM dd, yyyy').format(job.dateD.toDate()),
           ),
           _detailRow('🫧 Status', textJobStatus(job)),
-          if (promoFreeCount > 0) _detailRowPriceFree(job, promoFreeCount),
-
-          if (promoFreeCount <= 0)
-            () {
-              final paid =
-                  job.paidCashAmount +
-                  (job.paidGCashverified ? job.paidGCashAmount : 0);
-              final isEqual = job.finalPrice == paid;
-              final isPaidZero = paid == 0;
-              return _detailRow(
-                "💰 Price",
-                (isEqual || isPaidZero)
-                    ? "₱${job.finalPrice}"
-                    : "₱${job.finalPrice} / ₱$paid",
-                textColor: (isEqual || isPaidZero)
-                    ? null
-                    : Colors.orange.shade800,
-              );
-            }(),
+          _detailRow('⭐ Stamps', '${job.promoCounter}'),
           _detailRow(
             "💳 Payment",
             job.paidCash
@@ -1434,88 +1354,6 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
           ),
           Expanded(
             child: Text(value, style: TextStyle(color: textColor)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _detailRowPriceFree(JobModel job, int promoFreeCount) {
-    int originalPrice = job.finalPrice + (155 * promoFreeCount);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// HEADER
-          const Row(
-            children: [
-              Expanded(child: SizedBox()),
-              Expanded(
-                child: Text(
-                  "Original",
-                  textAlign: TextAlign.right,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  "Free",
-                  textAlign: TextAlign.right,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  "Total",
-                  textAlign: TextAlign.right,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 4),
-
-          /// VALUES
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  "💰 Price:",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blueAccent,
-                  ),
-                ),
-              ),
-
-              /// Original Price
-              Expanded(
-                child: Text("₱$originalPrice", textAlign: TextAlign.right),
-              ),
-
-              /// Free value
-              Expanded(
-                child: Text(
-                  "₱${155 * promoFreeCount}\n($promoFreeCount free)",
-                  textAlign: TextAlign.right,
-                ),
-              ),
-
-              /// Final price
-              Expanded(
-                child: Text(
-                  "₱${job.finalPrice}",
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
