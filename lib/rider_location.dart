@@ -196,7 +196,9 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading || _lat == null || _lng == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     if (_offline && (_lat == null || _lng == null)) {
       return Center(
@@ -304,7 +306,12 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
             ),
           ),
         Expanded(
-          child: _LeafletMap(lat: _lat!, lng: _lng!, facing: _facing),
+          child: _LeafletMap(
+            key: const ValueKey('rider-map'),
+            lat: _lat!,
+            lng: _lng!,
+            facing: _facing,
+          ),
         ),
       ],
     );
@@ -317,7 +324,12 @@ class _LeafletMap extends StatefulWidget {
   final double lat;
   final double lng;
   final String? facing;
-  const _LeafletMap({required this.lat, required this.lng, this.facing});
+  const _LeafletMap({
+    super.key,
+    required this.lat,
+    required this.lng,
+    this.facing,
+  });
 
   @override
   State<_LeafletMap> createState() => _LeafletMapState();
@@ -336,7 +348,7 @@ class _LeafletMapState extends State<_LeafletMap> {
     super.initState();
     _viewId = 'leaflet-map-${DateTime.now().millisecondsSinceEpoch}';
 
-    final html = _buildLeafletHtml(widget.lat, widget.lng, widget.facing);
+    final html = _buildLeafletHtml(widget.lat, widget.lng);
     final blob = web.Blob(
       [html.toJS].toJS,
       web.BlobPropertyBag(type: 'text/html'),
@@ -356,12 +368,15 @@ class _LeafletMapState extends State<_LeafletMap> {
         final msg = e as web.MessageEvent;
         if (msg.data.dartify() == 'leaflet-ready') {
           _ready = true;
-          if (_pendingLat != null && _pendingLng != null) {
-            _sendUpdate(_pendingLat!, _pendingLng!, _pendingFacing);
-            _pendingLat = null;
-            _pendingLng = null;
-            _pendingFacing = null;
-          }
+          // Always send current position + facing immediately on ready
+          _sendUpdate(
+            _pendingLat ?? widget.lat,
+            _pendingLng ?? widget.lng,
+            _pendingFacing ?? widget.facing,
+          );
+          _pendingLat = null;
+          _pendingLng = null;
+          _pendingFacing = null;
         }
       }.toJS,
     );
@@ -400,8 +415,7 @@ class _LeafletMapState extends State<_LeafletMap> {
     return HtmlElementView(viewType: _viewId);
   }
 
-  static String _buildLeafletHtml(double lat, double lng, String? facing) {
-    final initialRight = facing != 'left';
+  static String _buildLeafletHtml(double lat, double lng) {
     return '''<!DOCTYPE html>
 <html>
 <head>
@@ -418,17 +432,17 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;}
 <script>
 var map=L.map('map',{zoomControl:true,attributionControl:false}).setView([$lat,$lng],16);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-var facingRight=$initialRight;
+var facingRight=false;
 
 function makeIcon(right){
-  var flip=right?'scaleX(1)':'scaleX(-1)';
+  var flip=right?'scaleX(-1)':'scaleX(1)';
   return L.divIcon({
     html:'<div style="font-size:28px;line-height:1;display:inline-block;transform:'+flip+';">&#x1F6FA;</div>',
     iconSize:[36,36],iconAnchor:[18,18],className:''
   });
 }
 
-var marker=L.marker([$lat,$lng],{icon:makeIcon(facingRight)}).addTo(map);
+var marker=L.marker([$lat,$lng],{icon:makeIcon(false)}).addTo(map);
 
 // Smooth animation state
 var fromLat=$lat, fromLng=$lng;
@@ -476,7 +490,7 @@ window.addEventListener('message',function(e){
   var d=e.data;
   if(d&&d.lat!==undefined&&d.lng!==undefined){
     if(d.facing!==undefined&&d.facing!==null){
-      var right=(d.facing!=='left');
+      var right=(d.facing==='right');
       if(right!==facingRight){
         facingRight=right;
         marker.setIcon(makeIcon(facingRight));
