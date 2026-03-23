@@ -618,13 +618,26 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                     }
 
                                     String? stampDate;
+                                    bool hasPromoFree = false;
+                                    int promoFreeCount = 0;
 
                                     if (jobIndex != null) {
                                       final job = jobs[jobIndex];
                                       final DateTime d = job.dateD.toDate();
-
                                       stampDate =
                                           "${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}";
+                                      hasPromoFree = job.items.any(
+                                        (item) =>
+                                            item.itemUniqueId ==
+                                            promoFree.itemUniqueId,
+                                      );
+                                      promoFreeCount = job.items
+                                          .where(
+                                            (item) =>
+                                                item.itemUniqueId ==
+                                                promoFree.itemUniqueId,
+                                          )
+                                          .length;
                                     }
 
                                     return GestureDetector(
@@ -691,6 +704,17 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w600,
                                                   color: Colors.white,
+                                                ),
+                                              ),
+
+                                            if (hasPromoFree)
+                                              Text(
+                                                "($promoFreeCount) Free Taken",
+                                                textAlign: TextAlign.center,
+                                                style: const TextStyle(
+                                                  fontSize: 7,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.amberAccent,
                                                 ),
                                               ),
                                           ],
