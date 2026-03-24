@@ -535,9 +535,35 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   }
 
   Future<void> _registerWatcher() async {
-    await FirebaseFirestore.instance.collection(_kWatchers).doc(_sessionId).set(
-      {'joinedAt': Timestamp.now(), 'lastSeen': Timestamp.now()},
-    );
+    String? publicIp;
+    try {
+      final resp = await http.get(
+        Uri.parse('https://api.ipify.org?format=json'),
+      );
+      if (resp.statusCode == 200) {
+        final json = jsonDecode(resp.body);
+        publicIp = json['ip'] as String?;
+      }
+    } catch (_) {}
+
+    final ua = web.window.navigator.userAgent;
+    final lang = web.window.navigator.language;
+    final screen = web.window.screen;
+    final tz = DateTime.now().timeZoneName;
+
+    await FirebaseFirestore.instance
+        .collection(_kWatchers)
+        .doc(_sessionId)
+        .set({
+          'joinedAt': Timestamp.now(),
+          'lastSeen': Timestamp.now(),
+          if (publicIp != null) 'publicIp': publicIp,
+          'userAgent': ua,
+          'language': lang,
+          'screenResolution': '${screen.width}x${screen.height}',
+          'timezone': tz,
+          'platform': web.window.navigator.platform,
+        });
   }
 
   Future<void> _updateLastSeen() async {

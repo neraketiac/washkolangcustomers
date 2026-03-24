@@ -1,11 +1,11 @@
 {
-    "name": "washkolangcustomer",
-    "short_name": "washkolangcustomer",
+    "name": "Washkolang Laundry Hub",
+    "short_name": "Washkolang",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Book your laundry service online, track your rider, and manage your loyalty rewards easily and conveniently.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
