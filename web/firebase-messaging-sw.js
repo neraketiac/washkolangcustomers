@@ -13,8 +13,8 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title ?? '🛵 Rider Update';
-  const body  = payload.notification?.body  ?? 'Rider is now available!';
+  const title = payload.data?.title ?? '🛵 Rider Update';
+  const body  = payload.data?.body  ?? 'Rider is now available!';
   const url   = payload.data?.url ?? 'https://washkolang.online';
 
   self.registration.showNotification(title, {

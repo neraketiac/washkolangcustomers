@@ -25,7 +25,19 @@ const _kStaleThreshold = Duration(minutes: 2);
 
 // ===================== NOTIFICATION HELPERS =====================
 
+const _kPreviousTokenKey = 'fcm_token';
+
 Future<void> _saveTokenToFirestore(String token) async {
+  // Delete old token doc if device got a new token
+  final prevToken = web.window.localStorage.getItem(_kPreviousTokenKey);
+  if (prevToken != null && prevToken != token) {
+    await FirebaseFirestore.instance
+        .collection(_kSubCollection)
+        .doc(prevToken)
+        .delete();
+  }
+  web.window.localStorage.setItem(_kPreviousTokenKey, token);
+
   await FirebaseFirestore.instance.collection(_kSubCollection).doc(token).set({
     'token': token,
     'subscribedAt': Timestamp.now(),
@@ -34,6 +46,7 @@ Future<void> _saveTokenToFirestore(String token) async {
 }
 
 Future<void> _removeTokenFromFirestore(String token) async {
+  web.window.localStorage.removeItem(_kPreviousTokenKey);
   await FirebaseFirestore.instance
       .collection(_kSubCollection)
       .doc(token)
@@ -571,7 +584,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
       await FirebaseFirestore.instance
           .collection(_kWatchers)
           .doc(_sessionId)
-          .update({'lastSeen': Timestamp.now()});
+          .set({'lastSeen': Timestamp.now()}, SetOptions(merge: true));
     } catch (_) {}
   }
 

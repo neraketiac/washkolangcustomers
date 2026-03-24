@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:washkolangcustomer/enterloyaltycode.dart';
 import 'firebase_options.dart';
@@ -16,6 +17,13 @@ Future<void> main() async {
   // Primary app (zpos-d985c)
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   firestore = FirebaseFirestore.instance;
+
+  // Suppress FCM foreground auto-display — SW handles all notifications
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: false,
+    badge: false,
+    sound: false,
+  );
 
   // Secondary app (signuptest-53277) — jobs database
   final forthApp = await Firebase.initializeApp(
