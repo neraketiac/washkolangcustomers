@@ -590,6 +590,12 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
 
   Future<void> _restoreNotifyState() async {
     try {
+      // Only restore silently if permission was already granted — never prompt
+      final settings = await FirebaseMessaging.instance
+          .getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized)
+        return;
+
       final token = await FirebaseMessaging.instance.getToken(
         vapidKey: _kVapidKey,
       );
@@ -618,12 +624,6 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
         sound: true,
       );
       if (settings.authorizationStatus == AuthorizationStatus.denied) {
-        if (mounted) {
-          setState(
-            () => _notifyStatus =
-                'Notifications blocked. Click the lock icon in the address bar, then Notifications, then Allow, then refresh.',
-          );
-        }
         return null;
       }
       if (settings.authorizationStatus != AuthorizationStatus.authorized) {
@@ -643,11 +643,13 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
     try {
       final token = _cachedToken ?? await _getToken();
       if (token == null) {
-        setState(() {
-          _notifyStatus =
-              'Notifications blocked. To enable: click the lock icon in your browser address bar, then Notifications, then Allow, then refresh.';
-          _notifyChecked = false;
-        });
+        if (val) {
+          setState(() {
+            _notifyStatus =
+                'Notifications blocked. To enable: click the lock icon in your browser address bar, then Notifications, then Allow, then refresh.';
+            _notifyChecked = false;
+          });
+        }
         return;
       }
       _cachedToken = token;
