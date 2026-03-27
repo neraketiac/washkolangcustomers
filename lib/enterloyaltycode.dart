@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:washkolangcustomer/main.dart';
 import 'package:washkolangcustomer/loyalty_single.dart';
 import 'package:washkolangcustomer/pickup_booking.dart';
-import 'package:washkolangcustomer/rider_location.dart';
+import 'package:washkolangcustomer/view_rider_location.dart';
 import 'package:web/web.dart' as web;
 
 class EnterLoyaltyCode extends StatefulWidget {

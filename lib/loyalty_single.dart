@@ -7,7 +7,7 @@ import 'package:washkolangcustomer/model/loyalty_order_online_model.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
 import 'package:washkolangcustomer/pickup_booking.dart';
-import 'package:washkolangcustomer/rider_location.dart';
+import 'package:washkolangcustomer/view_rider_location.dart';
 import 'package:web/web.dart' as web;
 
 // 🔥 Make sure these are defined somewhere in your project
