@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:washkolangcustomer/main.dart';
 import 'package:washkolangcustomer/loyalty_single.dart';
-import 'package:washkolangcustomer/pickup_booking.dart';
-import 'package:washkolangcustomer/view_rider_location.dart';
 import 'package:web/web.dart' as web;
 
 class EnterLoyaltyCode extends StatefulWidget {
@@ -160,6 +158,17 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios,
+                  size: 18,
+                  color: Colors.blueGrey,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -273,139 +282,44 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
 
             const SizedBox(height: 25),
 
-            // Pickup + Facebook row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PickupBookingScreen(),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF66BB6A), Color(0xFF388E3C)],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.local_shipping,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'Pickup',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    'or',
-                    style: TextStyle(color: Colors.blueGrey, fontSize: 12),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => web.window.open(
-                    'https://m.me/WashkoLangLaundryHub',
-                    '_blank',
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1877F2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('💬', style: TextStyle(fontSize: 12)),
-                        SizedBox(width: 5),
-                        Text(
-                          'Messenger',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
+            // // Facebook row
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.center,
+            //   children: [
+            //     GestureDetector(
+            //       onTap: () => web.window.open(
+            //         'https://m.me/WashkoLangLaundryHub',
+            //         '_blank',
+            //       ),
+            //       child: Container(
+            //         padding: const EdgeInsets.symmetric(
+            //           horizontal: 12,
+            //           vertical: 8,
+            //         ),
+            //         decoration: BoxDecoration(
+            //           color: const Color(0xFF1877F2),
+            //           borderRadius: BorderRadius.circular(20),
+            //         ),
+            //         child: const Row(
+            //           mainAxisSize: MainAxisSize.min,
+            //           children: [
+            //             Text('💬', style: TextStyle(fontSize: 12)),
+            //             SizedBox(width: 5),
+            //             Text(
+            //               'Messenger',
+            //               style: TextStyle(
+            //                 color: Colors.white,
+            //                 fontWeight: FontWeight.bold,
+            //                 fontSize: 12,
+            //               ),
+            //             ),
+            //           ],
+            //         ),
+            //       ),
+            //     ),
+            //   ],
+            // ),
             const SizedBox(height: 10),
-
-            // Check Rider Status
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const RiderLocationScreen(),
-                    ),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.blueGrey.shade200),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.electric_moped,
-                          size: 16,
-                          color: Colors.blueGrey,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'Check Rider Status',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blueGrey,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
             const Text(
               _version,
               style: TextStyle(fontSize: 9, color: Color(0x44607D8B)),

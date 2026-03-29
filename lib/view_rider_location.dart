@@ -4,6 +4,8 @@ import 'dart:ui_web' as ui_web;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:washkolangcustomer/enterloyaltycode.dart';
+import 'package:washkolangcustomer/pickup_booking_this_week.dart';
 import 'package:web/web.dart' as web;
 
 const _kCollection = 'rider_location';
@@ -590,14 +592,49 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
         child: SafeArea(
           child: Column(
             children: [
+              // ── top bar ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, size: 18),
-                      onPressed: () => Navigator.pop(context),
+                    // Facebook row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: () => web.window.open(
+                            'https://m.me/WashkoLangLaundryHub',
+                            '_blank',
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1877F2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('💬', style: TextStyle(fontSize: 12)),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Messenger',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+
                     const Expanded(
                       child: Text(
                         'Rider Location',
@@ -609,79 +646,121 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    // notify checkbox — upper left
+                    _notifyLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Checkbox(
+                            value: _notifyChecked,
+                            onChanged: (v) => _toggleNotify(v ?? false),
+                            activeColor: Colors.blueAccent,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                    GestureDetector(
+                      onTap: () => _toggleNotify(!_notifyChecked),
+                      child: Text(
+                        'Notify me when rider is online.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _notifyChecked
+                              ? Colors.blueAccent
+                              : Colors.blueGrey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Image.network(
+                        '/icons/Icon-192.png',
+                        width: 28,
+                        height: 28,
+                      ),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const EnterLoyaltyCode(),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const Expanded(
+              // notify status message
+              if (_notifyStatus != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
+                  child: Text(
+                    _notifyStatus!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _notifyChecked
+                          ? Colors.green.shade700
+                          : Colors.blueGrey,
+                    ),
+                  ),
+                ),
+              // ── map ──
+              Expanded(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                    child: RiderLocationWidget(),
+                    borderRadius: const BorderRadius.all(Radius.circular(16)),
+                    child: const RiderLocationWidget(),
                   ),
                 ),
               ),
+              // ── pickup booking this week ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PickupBookingThisWeekScreen(),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.blueGrey.shade200),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          _notifyLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Checkbox(
-                                  value: _notifyChecked,
-                                  onChanged: (v) => _toggleNotify(v ?? false),
-                                  activeColor: Colors.blueAccent,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                          const SizedBox(width: 6),
-                          const Expanded(
-                            child: Text(
-                              'Notify me when rider is online',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.blueGrey,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 13,
+                      horizontal: 20,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
                       ),
-                      if (_notifyStatus != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4, left: 4),
-                          child: Text(
-                            _notifyStatus!,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _notifyChecked
-                                  ? Colors.green.shade700
-                                  : Colors.blueGrey,
-                            ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blueAccent.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.local_laundry_service,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Pickup',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
