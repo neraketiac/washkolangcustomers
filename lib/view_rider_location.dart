@@ -473,6 +473,23 @@ var map=L.map('map',{zoomControl:true,attributionControl:false}).setView([$lat,$
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 var facingRight=false;
 
+// Recenter control
+var RecenterControl = L.Control.extend({
+  options: { position: 'bottomright' },
+  onAdd: function() {
+    var btn = L.DomUtil.create('button','leaflet-bar leaflet-control');
+    btn.innerHTML = '⊕';
+    btn.title = 'Recenter on rider';
+    btn.style.cssText = 'width:30px;height:30px;font-size:18px;line-height:28px;text-align:center;cursor:pointer;background:#fff;border:none;border-radius:4px;box-shadow:0 1px 5px rgba(0,0,0,0.4);';
+    L.DomEvent.on(btn,'click',function(e){
+      L.DomEvent.stopPropagation(e);
+      map.setView(marker.getLatLng(),16,{animate:true});
+    });
+    return btn;
+  }
+});
+new RecenterControl().addTo(map);
+
 function makeIcon(right){
   var flip=right?'scaleX(-1)':'scaleX(1)';
   return L.divIcon({
@@ -521,7 +538,13 @@ window.addEventListener('message',function(e){
       var right=(d.facing==='right');
       if(right!==facingRight){ facingRight=right; marker.setIcon(makeIcon(facingRight)); }
     }
-    animateTo(d.lat,d.lng);
+    if(d.recenter){
+      map.setView([d.lat,d.lng],16);
+      marker.setLatLng([d.lat,d.lng]);
+      fromLat=d.lat; fromLng=d.lng; toLat=d.lat; toLng=d.lng;
+    } else {
+      animateTo(d.lat,d.lng);
+    }
   }
 });
 </script>
@@ -544,6 +567,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   bool _notifyLoading = false;
   String? _notifyStatus;
   String? _cachedToken;
+  bool _mapMaximized = false;
 
   // Image viewer state
   bool _viewerVisible = false;
@@ -560,26 +584,19 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _restoreNotifyState();
+      // Preload all viewer images so they show instantly
+      for (final img in _images) {
+        precacheImage(AssetImage(img), context);
+      }
       _openViewer(0);
     });
   }
 
-  void _openViewer(int index) {
-    setState(() {
-      _viewerIndex = index;
-      _viewerVisible = true;
-    });
-  }
-
+  void _openViewer(int index) => setState(() {
+    _viewerIndex = index;
+    _viewerVisible = true;
+  });
   void _closeViewer() => setState(() => _viewerVisible = false);
-
-  void _nextImage() {
-    if (_viewerIndex < _images.length - 1) {
-      setState(() => _viewerIndex++);
-    } else {
-      _closeViewer();
-    }
-  }
 
   Future<void> _restoreNotifyState() async {
     try {
@@ -655,6 +672,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenH = MediaQuery.of(context).size.height;
     return Scaffold(
       body: Stack(
         children: [
@@ -674,141 +692,255 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // ── top bar ──
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      children: [
-                        // Facebook row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            GestureDetector(
-                              onTap: () => web.window.open(
-                                'https://m.me/WashkoLangLaundryHub',
-                                '_blank',
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1877F2),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('💬', style: TextStyle(fontSize: 12)),
-                                    SizedBox(width: 5),
-                                    Text(
-                                      'Messenger',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const Expanded(
-                          child: Text(
-                            'Rider Location',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blueGrey,
-                            ),
-                          ),
-                        ),
-                        // notify checkbox — upper left
-                        _notifyLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Checkbox(
-                                value: _notifyChecked,
-                                onChanged: (v) => _toggleNotify(v ?? false),
-                                activeColor: Colors.blueAccent,
-                                materialTapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                                visualDensity: VisualDensity.compact,
-                              ),
-                        GestureDetector(
-                          onTap: () => _toggleNotify(!_notifyChecked),
-                          child: Text(
-                            'Notify me.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _notifyChecked
-                                  ? Colors.blueAccent
-                                  : Colors.blueGrey,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: Image.network(
-                            '/icons/Icon-192.png',
-                            width: 28,
-                            height: 28,
-                          ),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const EnterLoyaltyCode(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // notify status message
-                  if (_notifyStatus != null)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
-                      child: Text(
-                        _notifyStatus!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: _notifyChecked
-                              ? Colors.green.shade700
-                              : Colors.blueGrey,
-                        ),
-                      ),
-                    ),
-                  // ── map ──
+                  // scrollable body
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(16),
-                        ),
-                        child: const RiderLocationWidget(),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // 1. welcome
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/images/welcome.png',
+                              width: double.infinity,
+                              fit: BoxFit.fitWidth,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          // 2. services
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/images/Services.png',
+                              width: double.infinity,
+                              fit: BoxFit.fitWidth,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // 3. toolbar: Messenger | Notify me | Loyalty icon
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => web.window.open(
+                                    'https://m.me/WashkoLangLaundryHub',
+                                    '_blank',
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1877F2),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          '💬',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Messenger',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                // const SizedBox(width: 8),
+                                // _notifyLoading
+                                //     ? const SizedBox(
+                                //         width: 20,
+                                //         height: 20,
+                                //         child: CircularProgressIndicator(
+                                //           strokeWidth: 2,
+                                //         ),
+                                //       )
+                                //     : Checkbox(
+                                //         value: _notifyChecked,
+                                //         onChanged: (v) =>
+                                //             _toggleNotify(v ?? false),
+                                //         activeColor: Colors.blueAccent,
+                                //         materialTapTargetSize:
+                                //             MaterialTapTargetSize.shrinkWrap,
+                                //         visualDensity: VisualDensity.compact,
+                                //       ),
+                                // GestureDetector(
+                                //   onTap: () => _toggleNotify(!_notifyChecked),
+                                //   child: Text(
+                                //     'Notify me',
+                                //     style: TextStyle(
+                                //       fontSize: 11,
+                                //       fontWeight: FontWeight.w600,
+                                //       color: _notifyChecked
+                                //           ? Colors.blueAccent
+                                //           : Colors.blueGrey,
+                                //     ),
+                                //   ),
+                                // ),
+                                const Spacer(),
+                                Text(
+                                  "Loyalty Card 👉",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF3A86FF), // soft clean blue
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const EnterLoyaltyCode(),
+                                    ),
+                                  ),
+                                  child: Image.network(
+                                    '/icons/Icon-192.png',
+                                    width: 32,
+                                    height: 32,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_notifyStatus != null)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                              child: Text(
+                                _notifyStatus!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: _notifyChecked
+                                      ? Colors.green.shade700
+                                      : Colors.blueGrey,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 10),
+
+                          // 4. map label + maximize button (outside iframe)
+                          Row(
+                            children: [
+                              const SizedBox(width: 8),
+                              _notifyLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Checkbox(
+                                      value: _notifyChecked,
+                                      onChanged: (v) =>
+                                          _toggleNotify(v ?? false),
+                                      activeColor: Colors.blueAccent,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                              GestureDetector(
+                                onTap: () => _toggleNotify(!_notifyChecked),
+                                child: Text(
+                                  'Notify me when rider is available.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: _notifyChecked
+                                        ? Colors.blueAccent
+                                        : Colors.blueGrey,
+                                  ),
+                                ),
+                              ),
+                              // const Text(
+                              //   '🛵 Rider Map',
+                              //   style: TextStyle(
+                              //     fontSize: 12,
+                              //     fontWeight: FontWeight.bold,
+                              //     color: Colors.blueGrey,
+                              //   ),
+                              // ),
+                              const Spacer(),
+                              Material(
+                                color: Colors.blueGrey.shade700,
+                                borderRadius: BorderRadius.circular(8),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () => setState(
+                                    () => _mapMaximized = !_mapMaximized,
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _mapMaximized
+                                              ? Icons.fullscreen_exit
+                                              : Icons.fullscreen,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _mapMaximized
+                                              ? 'Minimize'
+                                              : 'Maximize',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+
+                          // map iframe
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: _mapMaximized ? screenH * 0.75 : 220,
+                              child: const RiderLocationWidget(),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  // ── Price + Pickup buttons ──
+                  // ── Price + Pickup always at bottom ──
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
                     child: Row(
                       children: [
-                        // Price button
                         Expanded(
                           child: GestureDetector(
                             onTap: () => _openViewer(0),
@@ -852,7 +984,6 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // Pickup button
                         Expanded(
                           child: GestureDetector(
                             onTap: () => Navigator.push(
@@ -910,100 +1041,114 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
               ),
             ),
           ),
-          // ── image viewer overlay ──
+
+          // image viewer overlay
           if (_viewerVisible)
             Positioned.fill(
-              child: Container(
+              child: Material(
                 color: Colors.black87,
                 child: SafeArea(
-                  child: Stack(
-                    children: [
-                      // image — fits screen, constrained to available space
-                      Positioned.fill(
-                        top: 44,
-                        bottom: 52,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.asset(
-                              _images[_viewerIndex],
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Close all — top right
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: GestureDetector(
-                          onTap: _closeViewer,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Icon(
+                  child: StatefulBuilder(
+                    builder: (ctx, setViewerState) => Column(
+                      children: [
+                        // close row
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: TextButton.icon(
+                            onPressed: _closeViewer,
+                            icon: const Icon(
                               Icons.close,
                               color: Colors.white,
-                              size: 20,
+                              size: 22,
                             ),
-                          ),
-                        ),
-                      ),
-                      // Page indicator — bottom left
-                      Positioned(
-                        bottom: 8,
-                        left: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${_viewerIndex + 1} / ${_images.length}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Next / Close — bottom right
-                      Positioned(
-                        bottom: 8,
-                        right: 12,
-                        child: GestureDetector(
-                          onTap: _nextImage,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blueAccent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _viewerIndex < _images.length - 1
-                                  ? 'Next →'
-                                  : 'Close',
-                              style: const TextStyle(
+                            label: const Text(
+                              'Close all',
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                                fontSize: 13,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        // image
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.asset(
+                                _images[_viewerIndex],
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // bottom bar
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white24,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '${_viewerIndex + 1} / ${_images.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              ElevatedButton(
+                                onPressed: () {
+                                  if (_viewerIndex < _images.length - 1) {
+                                    setState(() => _viewerIndex++);
+                                    setViewerState(() {});
+                                  } else {
+                                    _closeViewer();
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blueAccent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 28,
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  elevation: 4,
+                                ),
+                                child: Text(
+                                  _viewerIndex < _images.length - 1
+                                      ? 'Next →'
+                                      : 'Close',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
