@@ -545,10 +545,40 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   String? _notifyStatus;
   String? _cachedToken;
 
+  // Image viewer state
+  bool _viewerVisible = false;
+  int _viewerIndex = 0;
+
+  static const _images = [
+    'assets/images/first_pic.jpg',
+    'assets/images/price_list.jpg',
+    'assets/images/rules.jpg',
+  ];
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreNotifyState());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreNotifyState();
+      _openViewer(0);
+    });
+  }
+
+  void _openViewer(int index) {
+    setState(() {
+      _viewerIndex = index;
+      _viewerVisible = true;
+    });
+  }
+
+  void _closeViewer() => setState(() => _viewerVisible = false);
+
+  void _nextImage() {
+    if (_viewerIndex < _images.length - 1) {
+      setState(() => _viewerIndex++);
+    } else {
+      _closeViewer();
+    }
   }
 
   Future<void> _restoreNotifyState() async {
@@ -626,192 +656,359 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // ── top bar ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                child: Row(
-                  children: [
-                    // Facebook row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
+        children: [
+          // ── main content ──
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFFE3F2FD),
+                  Color(0xFFBBDEFB),
+                  Color(0xFF90CAF9),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // ── top bar ──
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 6,
+                    ),
+                    child: Row(
                       children: [
-                        GestureDetector(
-                          onTap: () => web.window.open(
-                            'https://m.me/WashkoLangLaundryHub',
-                            '_blank',
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1877F2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('💬', style: TextStyle(fontSize: 12)),
-                                SizedBox(width: 5),
-                                Text(
-                                  'Messenger',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
+                        // Facebook row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () => web.window.open(
+                                'https://m.me/WashkoLangLaundryHub',
+                                '_blank',
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
                                 ),
-                              ],
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1877F2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('💬', style: TextStyle(fontSize: 12)),
+                                    SizedBox(width: 5),
+                                    Text(
+                                      'Messenger',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const Expanded(
+                          child: Text(
+                            'Rider Location',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blueGrey,
+                            ),
+                          ),
+                        ),
+                        // notify checkbox — upper left
+                        _notifyLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Checkbox(
+                                value: _notifyChecked,
+                                onChanged: (v) => _toggleNotify(v ?? false),
+                                activeColor: Colors.blueAccent,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                        GestureDetector(
+                          onTap: () => _toggleNotify(!_notifyChecked),
+                          child: Text(
+                            'Notify me.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _notifyChecked
+                                  ? Colors.blueAccent
+                                  : Colors.blueGrey,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Image.network(
+                            '/icons/Icon-192.png',
+                            width: 28,
+                            height: 28,
+                          ),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EnterLoyaltyCode(),
                             ),
                           ),
                         ),
                       ],
                     ),
-
-                    const Expanded(
+                  ),
+                  // notify status message
+                  if (_notifyStatus != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
                       child: Text(
-                        'Rider Location',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blueGrey,
-                        ),
-                      ),
-                    ),
-                    // notify checkbox — upper left
-                    _notifyLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Checkbox(
-                            value: _notifyChecked,
-                            onChanged: (v) => _toggleNotify(v ?? false),
-                            activeColor: Colors.blueAccent,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                    GestureDetector(
-                      onTap: () => _toggleNotify(!_notifyChecked),
-                      child: Text(
-                        'Notify me.',
+                        _notifyStatus!,
                         style: TextStyle(
                           fontSize: 11,
                           color: _notifyChecked
-                              ? Colors.blueAccent
+                              ? Colors.green.shade700
                               : Colors.blueGrey,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: Image.network(
-                        '/icons/Icon-192.png',
-                        width: 28,
-                        height: 28,
-                      ),
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EnterLoyaltyCode(),
+                  // ── map ──
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(16),
                         ),
+                        child: const RiderLocationWidget(),
                       ),
                     ),
-                  ],
-                ),
-              ),
-              // notify status message
-              if (_notifyStatus != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
-                  child: Text(
-                    _notifyStatus!,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: _notifyChecked
-                          ? Colors.green.shade700
-                          : Colors.blueGrey,
-                    ),
                   ),
-                ),
-              // ── map ──
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.all(Radius.circular(16)),
-                    child: const RiderLocationWidget(),
-                  ),
-                ),
-              ),
-              // ── pickup booking this week ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                child: GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PickupBookingThisWeekScreen(),
-                    ),
-                  ),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 13,
-                      horizontal: 20,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blueAccent.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  // ── Price + Pickup buttons ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                    child: Row(
                       children: [
-                        Icon(
-                          Icons.local_laundry_service,
-                          color: Colors.white,
-                          size: 18,
+                        // Price button
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _openViewer(0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF66BB6A),
+                                    Color(0xFF388E3C),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.green.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.price_change,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Price',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Pickup',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                        const SizedBox(width: 10),
+                        // Pickup button
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const PickupBookingThisWeekScreen(),
+                              ),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF42A5F5),
+                                    Color(0xFF1E88E5),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blueAccent.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.local_laundry_service,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Pickup',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
+                ],
+              ),
+            ),
+          ),
+          // ── image viewer overlay ──
+          if (_viewerVisible)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black87,
+                child: SafeArea(
+                  child: Stack(
+                    children: [
+                      // image — fits screen, constrained to available space
+                      Positioned.fill(
+                        top: 44,
+                        bottom: 52,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              _images[_viewerIndex],
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Close all — top right
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: _closeViewer,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Page indicator — bottom left
+                      Positioned(
+                        bottom: 8,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${_viewerIndex + 1} / ${_images.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Next / Close — bottom right
+                      Positioned(
+                        bottom: 8,
+                        right: 12,
+                        child: GestureDetector(
+                          onTap: _nextImage,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blueAccent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _viewerIndex < _images.length - 1
+                                  ? 'Next →'
+                                  : 'Close',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
