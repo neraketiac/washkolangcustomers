@@ -110,20 +110,40 @@ class _PickupBookingThisWeekScreenState
     final missing = days
         .where((d) => !_availabilityCache.containsKey(_docId(d)))
         .toList();
-    if (missing.isNotEmpty) {
-      final start = missing.first;
-      final end = missing.last;
-      final snap = await FirebaseFirestore.instance
-          .collection('Rider_schedule')
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
-          .get();
-      for (final doc in snap.docs) {
-        final avail = ModelRiderAvailability.fromMap(doc.data());
-        _availabilityCache[avail.docId] = avail;
+    try {
+      if (missing.isNotEmpty) {
+        final start = missing.first;
+        final end = missing.last;
+        final snap = await FirebaseFirestore.instance
+            .collection('Rider_schedule')
+            .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+            .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
+            .get()
+            .timeout(const Duration(seconds: 10));
+        for (final doc in snap.docs) {
+          final avail = ModelRiderAvailability.fromMap(doc.data());
+          _availabilityCache[avail.docId] = avail;
+        }
+      }
+      setState(() => _loadingAvailability = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingAvailability = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString().contains('TimeoutException')
+                  ? 'Connection timed out. Please check your internet and try again.'
+                  : 'Failed to load schedule. Please try again.',
+            ),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _loadWeekAvailability(weekStart),
+            ),
+          ),
+        );
       }
     }
-    setState(() => _loadingAvailability = false);
   }
 
   ModelRiderAvailability? _availabilityFor(DateTime d) =>
@@ -235,7 +255,8 @@ class _PickupBookingThisWeekScreenState
       final freshDoc = await FirebaseFirestore.instance
           .collection('Rider_schedule')
           .doc(docId)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 10));
       if (!freshDoc.exists) {
         setState(() {
           _saving = false;
@@ -288,9 +309,22 @@ class _PickupBookingThisWeekScreenState
       createdAt: Timestamp.now(),
       cardNumber: widget.cardNumber,
     );
-    await FirebaseFirestore.instance
-        .collection('loyalty_order_online')
-        .add(order.toMap());
+    try {
+      await FirebaseFirestore.instance
+          .collection('loyalty_order_online')
+          .add(order.toMap())
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _saveError = e.toString().contains('TimeoutException')
+              ? 'Connection timed out. Please check your internet and try again.'
+              : 'Failed to save booking. Please try again.';
+        });
+      }
+      return;
+    }
     if (!mounted) return;
     setState(() => _saving = false);
     showDialog(

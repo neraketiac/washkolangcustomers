@@ -17,6 +17,7 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
     defaultValue: 'dev',
   );
   static const String _storageKey = 'customer_code';
+  static const String _rememberKey = 'remember_me';
   late AnimationController controller;
   late Animation<double> animation;
   late AnimationController controllerbubble;
@@ -26,11 +27,13 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
 
   String? _error;
   bool _loading = false;
+  bool _rememberMe = false;
 
   @override
   void initState() {
     super.initState();
     _checkSavedCode();
+    _rememberMe = web.window.localStorage.getItem(_rememberKey) == 'true';
 
     controller = AnimationController(
       vsync: this,
@@ -64,9 +67,16 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
     final savedCode = web.window.localStorage.getItem(_storageKey);
     if (savedCode == null) return;
 
-    final isValid = await _validateCode(savedCode);
-    if (isValid && mounted) {
-      _navigateToCard(savedCode);
+    _controller.text = savedCode;
+    if (mounted) setState(() {});
+
+    try {
+      final isValid = await _validateCode(savedCode);
+      if (isValid && mounted) {
+        _navigateToCard(savedCode);
+      }
+    } catch (_) {
+      // silently fail — user can still enter manually
     }
   }
 
@@ -77,7 +87,8 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
         .collection('loyalty')
         .where('cardNumber', isEqualTo: int.tryParse(code) ?? 0)
         .limit(1)
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 10));
 
     return snap.docs.isNotEmpty;
   }
@@ -106,29 +117,45 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
       _error = null;
     });
 
-    final isValid = await _validateCode(code);
+    try {
+      final isValid = await _validateCode(code);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (isValid) {
-      web.window.localStorage.setItem(_storageKey, code);
-      _navigateToCard(code);
-    } else {
+      if (isValid) {
+        if (_rememberMe) {
+          web.window.localStorage.setItem(_storageKey, code);
+        }
+        _navigateToCard(code);
+      } else {
+        setState(() {
+          _error = 'Invalid card number';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = 'Invalid card number';
         _loading = false;
+        _error = e.toString().contains('TimeoutException')
+            ? 'Connection timed out. Please check your internet and try again.'
+            : 'Something went wrong. Please try again.';
       });
     }
   }
 
   void _navigateToCard(String code) {
-    _controller.clear();
+    if (!_rememberMe) _controller.clear();
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => MyLoyaltyCard(code)),
     ).then((_) {
-      // Clear saved code so auto-login doesn't re-trigger on back
-      web.window.localStorage.removeItem(_storageKey);
+      if (!_rememberMe) {
+        web.window.localStorage.removeItem(_storageKey);
+      } else {
+        // Restore the number in the display on return
+        _controller.text = web.window.localStorage.getItem(_storageKey) ?? code;
+      }
       if (mounted) setState(() => _loading = false);
     });
   }
@@ -158,17 +185,6 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios,
-                  size: 18,
-                  color: Colors.blueGrey,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -268,6 +284,53 @@ class _EnterLoyaltyCodeState extends State<EnterLoyaltyCode>
             const SizedBox(height: 16),
 
             _buildKeypad(),
+
+            const SizedBox(height: 16),
+
+            // Remember me + Back row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Checkbox(
+                  value: _rememberMe,
+                  onChanged: (v) {
+                    final val = v ?? false;
+                    setState(() => _rememberMe = val);
+                    web.window.localStorage.setItem(
+                      _rememberKey,
+                      val.toString(),
+                    );
+                    if (val) {
+                      web.window.localStorage.setItem(
+                        _storageKey,
+                        _controller.text,
+                      );
+                    } else {
+                      web.window.localStorage.removeItem(_storageKey);
+                    }
+                  },
+                  activeColor: Colors.blueAccent,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+                const Text(
+                  'Remember me',
+                  style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                ),
+                const SizedBox(width: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Back',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.blueAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
 
             const SizedBox(height: 8),
 

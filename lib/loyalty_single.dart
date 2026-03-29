@@ -6,7 +6,6 @@ import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyalty_order_online_model.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
-import 'package:web/web.dart' as web;
 
 // 🔥 Make sure these are defined somewhere in your project
 // const String JOBS_QUEUE_REF = "Jobs_queue";
@@ -19,10 +18,7 @@ import 'package:web/web.dart' as web;
 Future<List<JobModel>> getJobsByCardNumber(String cardNumber) async {
   const String JOBS_DONE_REF = "Jobs_done";
   const String JOBS_COMPLETED_REF = "Jobs_completed";
-
-  // Jobs live in the secondary Firebase project
   const jobCollections = [JOBS_DONE_REF, JOBS_COMPLETED_REF];
-
   List<JobModel> allJobs = [];
 
   for (final jobCollection in jobCollections) {
@@ -32,7 +28,8 @@ Future<List<JobModel>> getJobsByCardNumber(String cardNumber) async {
           'C00_CustomerId',
           isEqualTo: int.tryParse(cardNumber) ?? cardNumber,
         )
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 10));
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
@@ -58,16 +55,13 @@ class MyLoyaltyCard extends StatefulWidget {
 
 class _MyLoyaltyCardState extends State<MyLoyaltyCard>
     with TickerProviderStateMixin {
-  static const String _storageKey = 'customer_code';
-  static const String _rememberKey = 'remember_me';
-
   int? _selectedIndex;
   Future<LoyaltyModel?>? _future;
   late AnimationController controller;
   late Animation<double> animation;
   late AnimationController controllerbubble;
   late Animation<double> animationbubble;
-  bool _rememberMe = false;
+
   final Map<int, String> promoErrorMessages = {
     0: "Eligible for promo",
     1: "On review – partial eligible, unpaid",
@@ -97,9 +91,6 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
   void initState() {
     super.initState();
     _future = _fetchLoyalty();
-
-    // Load saved remember-me preference
-    _rememberMe = web.window.localStorage.getItem(_rememberKey) == 'true';
 
     controller = AnimationController(
       vsync: this,
@@ -135,7 +126,8 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
         .collection('loyalty')
         .where('cardNumber', isEqualTo: parsed)
         .limit(1)
-        .get();
+        .get()
+        .timeout(const Duration(seconds: 10));
 
     if (snap.docs.isEmpty) return null;
 
@@ -201,6 +193,44 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
                 return const Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                final err = snapshot.error.toString();
+                final msg =
+                    err.contains('TimeoutException') || err.contains('network')
+                    ? 'Connection timed out. Please check your internet and try again.'
+                    : 'Failed to load card data. Please try again.';
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.wifi_off,
+                          size: 40,
+                          color: Colors.blueGrey,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          msg,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.blueGrey,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () =>
+                              setState(() => _future = _fetchLoyalty()),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               }
 
               if (!snapshot.hasData || snapshot.data == null) {
@@ -764,48 +794,17 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
             const SizedBox(height: 20),
 
-            // Remember me + Back row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Checkbox(
-                  value: _rememberMe,
-                  onChanged: (v) {
-                    final val = v ?? false;
-                    setState(() => _rememberMe = val);
-                    web.window.localStorage.setItem(
-                      _rememberKey,
-                      val.toString(),
-                    );
-                  },
-                  activeColor: Colors.blueAccent,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
+            // Back button
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Back",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.blueAccent,
+                  fontWeight: FontWeight.w600,
                 ),
-                const Text(
-                  'Remember me',
-                  style: TextStyle(fontSize: 12, color: Colors.blueGrey),
-                ),
-                const SizedBox(width: 16),
-                TextButton(
-                  onPressed: () {
-                    if (_rememberMe) {
-                      web.window.localStorage.setItem(_storageKey, widget.code);
-                    } else {
-                      web.window.localStorage.removeItem(_storageKey);
-                    }
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    "Back",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.blueAccent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
 
             const SizedBox(height: 8),

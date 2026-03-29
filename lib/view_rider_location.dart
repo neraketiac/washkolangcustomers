@@ -78,6 +78,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   String? _riderStatus;
   bool _loading = true;
   bool _offline = false;
+  bool _streamError = false;
   String? _lastUpdated;
   StreamSubscription? _sub;
 
@@ -99,7 +100,8 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
       final doc = await FirebaseFirestore.instance
           .collection('Rider_schedule')
           .doc(docId)
-          .get();
+          .get()
+          .timeout(const Duration(seconds: 10));
       if (!doc.exists) {
         if (mounted)
           setState(() {
@@ -131,41 +133,52 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
 
   void _openStream() {
     final ref = FirebaseFirestore.instance.collection(_kCollection).doc(_kDoc);
-    _sub = ref.snapshots().listen((snap) {
-      if (!snap.exists) {
+    _sub = ref.snapshots().listen(
+      (snap) {
+        if (!snap.exists) {
+          if (mounted)
+            setState(() {
+              _loading = false;
+              _offline = true;
+              _streamError = false;
+            });
+          _loadTodaySlots();
+          return;
+        }
+        final data = snap.data()!;
+        final isOnline = data['isOnline'] as bool? ?? true;
+        final lat = (data['lat'] as num?)?.toDouble();
+        final lng = (data['lng'] as num?)?.toDouble();
+        final facing = data['facing'] as String?;
+        final status = data['status'] as String?;
+        final ts = data['updatedAt'] as Timestamp?;
+
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _streamError = false;
+            _offline = !isOnline;
+            if (lat != null) _lat = lat;
+            if (lng != null) _lng = lng;
+            if (facing != null) _facing = facing;
+            _riderStatus = status;
+            if (ts != null) {
+              final d = ts.toDate().toLocal();
+              _lastUpdated =
+                  '${d.month}/${d.day} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+            }
+          });
+        }
+        if (!isOnline) _loadTodaySlots();
+      },
+      onError: (e) {
         if (mounted)
           setState(() {
             _loading = false;
-            _offline = true;
+            _streamError = true;
           });
-        _loadTodaySlots();
-        return;
-      }
-      final data = snap.data()!;
-      final isOnline = data['isOnline'] as bool? ?? true;
-      final lat = (data['lat'] as num?)?.toDouble();
-      final lng = (data['lng'] as num?)?.toDouble();
-      final facing = data['facing'] as String?;
-      final status = data['status'] as String?;
-      final ts = data['updatedAt'] as Timestamp?;
-
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _offline = !isOnline;
-          if (lat != null) _lat = lat;
-          if (lng != null) _lng = lng;
-          if (facing != null) _facing = facing;
-          _riderStatus = status;
-          if (ts != null) {
-            final d = ts.toDate().toLocal();
-            _lastUpdated =
-                '${d.month}/${d.day} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-          }
-        });
-      }
-      if (!isOnline) _loadTodaySlots();
-    });
+      },
+    );
   }
 
   @override
@@ -178,6 +191,38 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_streamError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off, size: 40, color: Colors.blueGrey),
+              const SizedBox(height: 12),
+              const Text(
+                'Unable to connect. Please check your internet connection.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.blueGrey, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _loading = true;
+                    _streamError = false;
+                  });
+                  _sub?.cancel();
+                  _openStream();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (_lat == null || _lng == null) {
@@ -625,7 +670,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    fontSize: 10,
                                   ),
                                 ),
                               ],
@@ -640,7 +685,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                         'Rider Location',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: Colors.blueGrey,
                         ),
@@ -664,7 +709,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                     GestureDetector(
                       onTap: () => _toggleNotify(!_notifyChecked),
                       child: Text(
-                        'Notify me when rider is online.',
+                        'Notify me.',
                         style: TextStyle(
                           fontSize: 11,
                           color: _notifyChecked
