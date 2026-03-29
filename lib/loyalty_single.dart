@@ -6,6 +6,7 @@ import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyalty_order_online_model.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
+import 'package:washkolangcustomer/pickup_booking_this_week.dart';
 
 // 🔥 Make sure these are defined somewhere in your project
 // const String JOBS_QUEUE_REF = "Jobs_queue";
@@ -794,17 +795,68 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
 
             const SizedBox(height: 20),
 
-            // Back button
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Back",
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.blueAccent,
-                  fontWeight: FontWeight.w600,
+            // Pickup + Back row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PickupBookingThisWeekScreen(
+                        prefillName: loyalty.name,
+                        prefillContact: loyalty.contact,
+                        prefillAddress: loyalty.address,
+                        requireAddress: false,
+                        cardNumber: loyalty.cardNumber,
+                      ),
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF66BB6A), Color(0xFF388E3C)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.local_shipping,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Pickup',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Back",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.blueAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 8),

@@ -146,8 +146,9 @@ class _PickupBookingThisWeekScreenState
     }
   }
 
-  ModelRiderAvailability? _availabilityFor(DateTime d) =>
-      _availabilityCache[_docId(d)];
+  ModelRiderAvailability _availabilityFor(DateTime d) =>
+      _availabilityCache[_docId(d)] ??
+      ModelRiderAvailability(date: d, slot10to12: true, slot7to9pm: true);
 
   void _prevWeek() {
     final prev = _focusedWeekStart.subtract(const Duration(days: 7));
@@ -174,7 +175,6 @@ class _PickupBookingThisWeekScreenState
 
   void _onDayTap(DateTime day) {
     final avail = _availabilityFor(day);
-    if (avail == null) return;
     final hasActive = _wSlotLabels.keys.any((key) {
       return _slotValue(avail, key) && !_wIsSlotPast(day, key);
     });
@@ -257,16 +257,20 @@ class _PickupBookingThisWeekScreenState
           .doc(docId)
           .get()
           .timeout(const Duration(seconds: 10));
-      if (!freshDoc.exists) {
-        setState(() {
-          _saving = false;
-          _saveError =
-              'This schedule is no longer available. Please go back and select another date.';
-        });
-        return;
+
+      // Use Firestore data if it exists, otherwise fall back to the default slots
+      final freshAvail = freshDoc.exists
+          ? ModelRiderAvailability.fromMap(freshDoc.data()!)
+          : ModelRiderAvailability(
+              date: _selectedDate!,
+              slot10to12: true,
+              slot7to9pm: true,
+            );
+
+      if (freshDoc.exists) {
+        _availabilityCache[docId] = freshAvail;
       }
-      final freshAvail = ModelRiderAvailability.fromMap(freshDoc.data()!);
-      _availabilityCache[docId] = freshAvail;
+
       final slotKey = _wSlotLabels.entries
           .firstWhere(
             (e) => e.value == _selectedSlot,
@@ -294,7 +298,9 @@ class _PickupBookingThisWeekScreenState
     } catch (e) {
       setState(() {
         _saving = false;
-        _saveError = 'Could not verify schedule. Please try again.';
+        _saveError = e.toString().contains('TimeoutException')
+            ? 'Connection timed out. Please check your internet and try again.'
+            : 'Could not verify schedule. Please try again.';
       });
       return;
     }
@@ -698,13 +704,10 @@ class _PickupBookingThisWeekScreenState
                     children: weekDays.map((date) {
                       final isPast = date.isBefore(today);
                       final avail = _availabilityFor(date);
-                      final hasSlot =
-                          avail != null &&
-                          _wSlotLabels.keys.any(
-                            (key) =>
-                                _slotValue(avail, key) &&
-                                !_wIsSlotPast(date, key),
-                          );
+                      final hasSlot = _wSlotLabels.keys.any(
+                        (key) =>
+                            _slotValue(avail, key) && !_wIsSlotPast(date, key),
+                      );
                       final isSelected =
                           _selectedDate != null &&
                           _selectedDate!.year == date.year &&
@@ -773,8 +776,7 @@ class _PickupBookingThisWeekScreenState
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                if (!isPast && avail != null)
-                                  ..._slotBadges(avail, isSelected),
+                                if (!isPast) ..._slotBadges(avail, isSelected),
                               ],
                             ),
                           ),
