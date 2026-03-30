@@ -568,6 +568,13 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   String? _notifyStatus;
   String? _cachedToken;
   bool _mapMaximized = false;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   // Image viewer state
   bool _viewerVisible = false;
@@ -695,6 +702,7 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                   // scrollable body
                   Expanded(
                     child: SingleChildScrollView(
+                      controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -716,6 +724,20 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                               'assets/images/Services.png',
                               width: double.infinity,
                               fit: BoxFit.fitWidth,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // 2b. sample loyalty card
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.asset(
+                                'assets/images/sample_loyalty_card.png',
+                                width: double.infinity,
+                                fit: BoxFit.fitWidth,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -885,9 +907,24 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(8),
-                                  onTap: () => setState(
-                                    () => _mapMaximized = !_mapMaximized,
-                                  ),
+                                  onTap: () {
+                                    final maximizing = !_mapMaximized;
+                                    setState(() => _mapMaximized = maximizing);
+                                    if (maximizing) {
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_) {
+                                            _scrollController.animateTo(
+                                              _scrollController
+                                                  .position
+                                                  .maxScrollExtent,
+                                              duration: const Duration(
+                                                milliseconds: 400,
+                                              ),
+                                              curve: Curves.easeOut,
+                                            );
+                                          });
+                                    }
+                                  },
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,

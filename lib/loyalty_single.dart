@@ -417,61 +417,302 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                         final groupIndex = entry.key;
                         final groupStars = entry.value;
                         final filledStars = groupStars.length;
-
-                        /// real promo index
                         final rewardIndex = promoGroups.length - 1 - groupIndex;
 
                         return Container(
-                          padding: EdgeInsets.all(10),
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
                           decoration: BoxDecoration(
-                            color: Colors.lightBlueAccent[100],
-                            borderRadius: BorderRadius.circular(
-                              16,
-                            ), // 👈 curve corners
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF1565C0),
+                                Color(0xFF1E88E5),
+                                Color(0xFF42A5F5),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.shade900.withValues(
+                                  alpha: 0.4,
+                                ),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                /// STAMP GRID
-                                Expanded(
-                                  child: GridView.builder(
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    itemCount: 10,
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 5,
-                                          mainAxisSpacing: 10,
-                                          crossAxisSpacing: 10,
-                                        ),
-                                    itemBuilder: (context, index) {
-                                      final filled = index < filledStars;
+                          child: Column(
+                            children: [
+                              // ── Header ──
+                              RichText(
+                                textAlign: TextAlign.center,
+                                text: const TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: '✨ ONLINE ',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: 'LOYALTY CARD',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFFFFD54F),
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: ' ✨',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Earn Stars. Unlock Rewards. Enjoy More Every Visit!',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white70,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text('⭐', style: TextStyle(fontSize: 14)),
+                              const SizedBox(height: 10),
 
+                              // ── Stamps + Free ──
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  /// STAMP GRID
+                                  Expanded(
+                                    child: GridView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      itemCount: 10,
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: 5,
+                                            mainAxisSpacing: 8,
+                                            crossAxisSpacing: 8,
+                                          ),
+                                      itemBuilder: (context, index) {
+                                        final filled = index < filledStars;
+                                        int? jobIndex;
+                                        if (filled && index < groupStars.length)
+                                          jobIndex = groupStars[index];
+
+                                        String? stampDate;
+                                        bool hasPromoFree = false;
+                                        int promoFreeCount = 0;
+
+                                        if (filled && jobIndex != null) {
+                                          final job = jobs[jobIndex];
+                                          hasPromoFree = job.items.any(
+                                            (item) =>
+                                                item.itemUniqueId ==
+                                                promoFree.itemUniqueId,
+                                          );
+                                          promoFreeCount = job.items
+                                              .where(
+                                                (item) =>
+                                                    item.itemUniqueId ==
+                                                    promoFree.itemUniqueId,
+                                              )
+                                              .length;
+                                          final d = job.dateD.toDate();
+                                          stampDate =
+                                              '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
+                                        }
+
+                                        return GestureDetector(
+                                          onTap: filled && jobIndex != null
+                                              ? () => setState(
+                                                  () => _selectedIndex =
+                                                      jobIndex!,
+                                                )
+                                              : null,
+                                          child: AnimatedScale(
+                                            scale: (_selectedIndex == jobIndex)
+                                                ? 1.12
+                                                : 1.0,
+                                            duration: const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                gradient: filled
+                                                    ? const LinearGradient(
+                                                        colors: [
+                                                          Color(0xFF64B5F6),
+                                                          Color(0xFF1565C0),
+                                                        ],
+                                                        begin:
+                                                            Alignment.topLeft,
+                                                        end: Alignment
+                                                            .bottomRight,
+                                                      )
+                                                    : null,
+                                                color: filled
+                                                    ? null
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.15,
+                                                      ),
+                                                border: Border.all(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.4),
+                                                  width: 1.5,
+                                                ),
+                                                boxShadow: filled
+                                                    ? [
+                                                        BoxShadow(
+                                                          color: Colors
+                                                              .blue
+                                                              .shade900
+                                                              .withValues(
+                                                                alpha: 0.5,
+                                                              ),
+                                                          blurRadius: 8,
+                                                        ),
+                                                      ]
+                                                    : [],
+                                              ),
+                                              child: Stack(
+                                                clipBehavior: Clip.none,
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  Icon(
+                                                    filled
+                                                        ? Icons.star
+                                                        : Icons.star_border,
+                                                    color: Colors.white,
+                                                    size: 36,
+                                                  ),
+                                                  if (filled &&
+                                                      stampDate != null)
+                                                    Positioned(
+                                                      bottom: 4,
+                                                      child: Stack(
+                                                        children: [
+                                                          Text(
+                                                            stampDate,
+                                                            style: TextStyle(
+                                                              fontSize: 9,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              foreground: Paint()
+                                                                ..style =
+                                                                    PaintingStyle
+                                                                        .stroke
+                                                                ..strokeWidth =
+                                                                    2
+                                                                ..color =
+                                                                    const Color(
+                                                                      0xFF1565C0,
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            stampDate,
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 9,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Color(
+                                                                    0xFFFFD54F,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  if (hasPromoFree)
+                                                    Positioned(
+                                                      top: 2,
+                                                      child: Stack(
+                                                        children: [
+                                                          Text(
+                                                            '($promoFreeCount) Free',
+                                                            style: TextStyle(
+                                                              fontSize: 7,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              foreground: Paint()
+                                                                ..style =
+                                                                    PaintingStyle
+                                                                        .stroke
+                                                                ..strokeWidth =
+                                                                    2
+                                                                ..color = Colors
+                                                                    .black,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            '($promoFreeCount) Free',
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 7,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Color(
+                                                                    0xFFFFD54F,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 10),
+
+                                  /// BIG FREE STAR
+                                  Builder(
+                                    builder: (context) {
                                       int? jobIndex;
-
-                                      if (filled && index < groupStars.length) {
-                                        jobIndex = groupStars[index];
-                                      }
+                                      if (rewardStars.length > rewardIndex)
+                                        jobIndex = rewardStars[rewardIndex];
 
                                       String? stampDate;
                                       bool hasPromoFree = false;
                                       int promoFreeCount = 0;
 
-                                      if (filled && jobIndex != null) {
+                                      if (jobIndex != null) {
                                         final job = jobs[jobIndex];
-
-                                        //check the star if has free - start
-
-                                        //check if this job took the free
+                                        final d = job.dateD.toDate();
+                                        stampDate =
+                                            '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
                                         hasPromoFree = job.items.any(
                                           (item) =>
                                               item.itemUniqueId ==
                                               promoFree.itemUniqueId,
                                         );
-
                                         promoFreeCount = job.items
                                             .where(
                                               (item) =>
@@ -479,281 +720,98 @@ class _MyLoyaltyCardState extends State<MyLoyaltyCard>
                                                   promoFree.itemUniqueId,
                                             )
                                             .length;
-
-                                        //check the star if has free - end
-
-                                        final DateTime d = job.dateD.toDate();
-
-                                        stampDate =
-                                            "${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}";
                                       }
 
                                       return GestureDetector(
-                                        onTap: filled && jobIndex != null
-                                            ? () {
-                                                setState(() {
-                                                  _selectedIndex = jobIndex!;
-                                                });
-                                              }
+                                        onTap: jobIndex != null
+                                            ? () => setState(
+                                                () =>
+                                                    _selectedIndex = jobIndex!,
+                                              )
                                             : null,
-                                        child: AnimatedScale(
-                                          scale: (_selectedIndex == jobIndex)
-                                              ? 1.15
-                                              : 0.7,
+                                        child: AnimatedContainer(
                                           duration: const Duration(
-                                            milliseconds: 250,
+                                            milliseconds: 300,
                                           ),
-                                          child: AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 300,
+                                          width: 72,
+                                          height: 72,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: jobIndex != null
+                                                ? const LinearGradient(
+                                                    colors: [
+                                                      Color(0xFFFFE082),
+                                                      Color(0xFFFFA000),
+                                                    ],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  )
+                                                : null,
+                                            color: jobIndex != null
+                                                ? null
+                                                : Colors.white.withValues(
+                                                    alpha: 0.15,
+                                                  ),
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.5,
+                                              ),
+                                              width: 2,
                                             ),
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              gradient: filled
-                                                  ? const LinearGradient(
-                                                      colors: [
-                                                        Color(0xFF4FC3F7),
-                                                        Color(0xFF1E88E5),
-                                                      ],
-                                                    )
-                                                  : null,
-                                              color: filled
-                                                  ? null
-                                                  : Colors.blue.shade100,
-                                              boxShadow: filled
-                                                  ? [
-                                                      BoxShadow(
-                                                        color: Colors.blueAccent
-                                                            .withOpacity(.4),
-                                                        blurRadius: 12,
-                                                      ),
-                                                    ]
-                                                  : [],
-                                            ),
-                                            child: Stack(
-                                              clipBehavior: Clip.none,
-                                              alignment: Alignment.center,
-                                              children: [
-                                                Icon(
-                                                  filled
-                                                      ? Icons.star
-                                                      : Icons.star_border,
-                                                  color: filled
-                                                      ? Colors.white
-                                                      : Colors.blueGrey,
-                                                  size: 54,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.orange.withValues(
+                                                  alpha: 0.5,
                                                 ),
-
-                                                if (filled && stampDate != null)
-                                                  Positioned(
-                                                    top: 26,
-                                                    right: 6,
-                                                    child: Transform.rotate(
-                                                      angle: 0.2,
-                                                      child: Stack(
-                                                        children: [
-                                                          Text(
-                                                            stampDate,
-                                                            style: TextStyle(
-                                                              fontSize: 16,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              foreground: Paint()
-                                                                ..style =
-                                                                    PaintingStyle
-                                                                        .stroke
-                                                                ..strokeWidth =
-                                                                    3
-                                                                ..color = Colors
-                                                                    .black,
-                                                            ),
-                                                          ),
-                                                          Text(
-                                                            stampDate,
-                                                            style: const TextStyle(
-                                                              fontSize: 16,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color: Colors
-                                                                  .amberAccent,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
+                                                blurRadius: 14,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                Icons.star,
+                                                color: Colors.white,
+                                                size: 26,
+                                              ),
+                                              const Text(
+                                                'FREE',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              if (stampDate != null)
+                                                Text(
+                                                  stampDate,
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white,
                                                   ),
-
-                                                if (hasPromoFree)
-                                                  Positioned(
-                                                    top: 8,
-                                                    right: 0,
-                                                    child: Transform.rotate(
-                                                      angle: 0,
-                                                      child: Stack(
-                                                        children: [
-                                                          Text(
-                                                            "($promoFreeCount) Free Taken",
-                                                            style: TextStyle(
-                                                              fontSize: 8,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              foreground: Paint()
-                                                                ..style =
-                                                                    PaintingStyle
-                                                                        .stroke
-                                                                ..strokeWidth =
-                                                                    3
-                                                                ..color = Colors
-                                                                    .black,
-                                                            ),
-                                                          ),
-                                                          Text(
-                                                            "($promoFreeCount) Free Taken",
-                                                            style: const TextStyle(
-                                                              fontSize: 8,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color: Colors
-                                                                  .amberAccent,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
+                                                ),
+                                              if (hasPromoFree)
+                                                Text(
+                                                  '($promoFreeCount) Free Taken',
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontSize: 7,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFFFFE082),
                                                   ),
-                                              ],
-                                            ),
+                                                ),
+                                            ],
                                           ),
                                         ),
                                       );
                                     },
                                   ),
-                                ),
-
-                                const SizedBox(width: 12),
-
-                                /// BIG FREE STAR
-                                /// BIG FREE STAR
-                                Builder(
-                                  builder: (context) {
-                                    int? jobIndex;
-
-                                    if (rewardStars.length > rewardIndex) {
-                                      jobIndex = rewardStars[rewardIndex];
-                                    }
-
-                                    String? stampDate;
-                                    bool hasPromoFree = false;
-                                    int promoFreeCount = 0;
-
-                                    if (jobIndex != null) {
-                                      final job = jobs[jobIndex];
-                                      final DateTime d = job.dateD.toDate();
-                                      stampDate =
-                                          "${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}";
-                                      hasPromoFree = job.items.any(
-                                        (item) =>
-                                            item.itemUniqueId ==
-                                            promoFree.itemUniqueId,
-                                      );
-                                      promoFreeCount = job.items
-                                          .where(
-                                            (item) =>
-                                                item.itemUniqueId ==
-                                                promoFree.itemUniqueId,
-                                          )
-                                          .length;
-                                    }
-
-                                    return GestureDetector(
-                                      onTap: jobIndex != null
-                                          ? () {
-                                              setState(() {
-                                                _selectedIndex = jobIndex!;
-                                              });
-                                            }
-                                          : null,
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 300,
-                                        ),
-                                        width: 70,
-                                        height: 70,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: jobIndex != null
-                                              ? const LinearGradient(
-                                                  colors: [
-                                                    Color(0xFFFFD54F),
-                                                    Color(0xFFFFA000),
-                                                  ],
-                                                )
-                                              : null,
-                                          color: jobIndex != null
-                                              ? null
-                                              : Colors.orange.shade100,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.orange.withOpacity(
-                                                .35,
-                                              ),
-                                              blurRadius: 10,
-                                            ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(
-                                              Icons.star,
-                                              color: Colors.white,
-                                              size: 28,
-                                            ),
-
-                                            const SizedBox(height: 2),
-
-                                            const Text(
-                                              "FREE",
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-
-                                            if (stampDate != null)
-                                              Text(
-                                                stampDate,
-                                                style: const TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-
-                                            if (hasPromoFree)
-                                              Text(
-                                                "($promoFreeCount) Free Taken",
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                  fontSize: 7,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.amberAccent,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
+                            ],
                           ),
                         );
                       }).toList(),
