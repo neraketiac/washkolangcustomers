@@ -678,20 +678,16 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
     return Scaffold(
       body: Stack(
         children: [
-          // ── main content ──
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Color(0xFFE3F2FD),
-                  Color(0xFFBBDEFB),
-                  Color(0xFF90CAF9),
-                ],
+                colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -699,387 +695,186 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // scrollable body
                   Expanded(
                     child: SingleChildScrollView(
                       controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 1. welcome
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.asset(
-                              'assets/images/welcome.png',
-                              width: double.infinity,
-                              fit: BoxFit.fitWidth,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          // 2. services
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.asset(
-                              'assets/images/Services.png',
-                              width: double.infinity,
-                              fit: BoxFit.fitWidth,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          // 2b. sample loyalty card
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.asset(
-                                'assets/images/sample_loyalty_card.png',
-                                width: double.infinity,
-                                fit: BoxFit.fitWidth,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          // 3. toolbar: Messenger | Notify me | Loyalty icon
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => web.window.open(
-                                    'https://m.me/WashkoLangLaundryHub',
-                                    '_blank',
-                                  ),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1877F2),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          '💬',
-                                          style: TextStyle(fontSize: 12),
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Messenger',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                // const SizedBox(width: 8),
-                                // _notifyLoading
-                                //     ? const SizedBox(
-                                //         width: 20,
-                                //         height: 20,
-                                //         child: CircularProgressIndicator(
-                                //           strokeWidth: 2,
-                                //         ),
-                                //       )
-                                //     : Checkbox(
-                                //         value: _notifyChecked,
-                                //         onChanged: (v) =>
-                                //             _toggleNotify(v ?? false),
-                                //         activeColor: Colors.blueAccent,
-                                //         materialTapTargetSize:
-                                //             MaterialTapTargetSize.shrinkWrap,
-                                //         visualDensity: VisualDensity.compact,
-                                //       ),
-                                // GestureDetector(
-                                //   onTap: () => _toggleNotify(!_notifyChecked),
-                                //   child: Text(
-                                //     'Notify me',
-                                //     style: TextStyle(
-                                //       fontSize: 11,
-                                //       fontWeight: FontWeight.w600,
-                                //       color: _notifyChecked
-                                //           ? Colors.blueAccent
-                                //           : Colors.blueGrey,
-                                //     ),
-                                //   ),
-                                // ),
-                                const Spacer(),
-                                Text(
-                                  "Loyalty Card 👉",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF3A86FF), // soft clean blue
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const EnterLoyaltyCode(),
-                                    ),
-                                  ),
-                                  child: Image.network(
-                                    '/icons/Icon-192.png',
-                                    width: 32,
-                                    height: 32,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (_notifyStatus != null)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-                              child: Text(
-                                _notifyStatus!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: _notifyChecked
-                                      ? Colors.green.shade700
-                                      : Colors.blueGrey,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(height: 10),
-
-                          // 4. map label + maximize button (outside iframe)
-                          Row(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 480),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const SizedBox(width: 8),
-                              _notifyLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.asset('assets/images/welcome.png', width: double.infinity, fit: BoxFit.fitWidth),
+                              ),
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.asset('assets/images/Services.png', width: double.infinity, fit: BoxFit.fitWidth),
+                              ),
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.asset('assets/images/sample_loyalty_card.png', width: double.infinity, fit: BoxFit.fitWidth),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => web.window.open('https://m.me/WashkoLangLaundryHub', '_blank'),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        decoration: BoxDecoration(color: const Color(0xFF1877F2), borderRadius: BorderRadius.circular(20)),
+                                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                          Text('??', style: TextStyle(fontSize: 12)),
+                                          SizedBox(width: 4),
+                                          Text('Messenger', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                                        ]),
                                       ),
-                                    )
-                                  : Checkbox(
-                                      value: _notifyChecked,
-                                      onChanged: (v) =>
-                                          _toggleNotify(v ?? false),
-                                      activeColor: Colors.blueAccent,
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                      visualDensity: VisualDensity.compact,
                                     ),
-                              GestureDetector(
-                                onTap: () => _toggleNotify(!_notifyChecked),
-                                child: Text(
-                                  'Notify me when rider is available.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: _notifyChecked
-                                        ? Colors.blueAccent
-                                        : Colors.blueGrey,
-                                  ),
+                                    const Spacer(),
+                                    const Text('Loyalty Card ??', style: TextStyle(fontSize: 12, color: Color(0xFF3A86FF), fontWeight: FontWeight.w600)),
+                                    GestureDetector(
+                                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EnterLoyaltyCode())),
+                                      child: Image.network('/icons/Icon-192.png', width: 32, height: 32),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              // const Text(
-                              //   '🛵 Rider Map',
-                              //   style: TextStyle(
-                              //     fontSize: 12,
-                              //     fontWeight: FontWeight.bold,
-                              //     color: Colors.blueGrey,
-                              //   ),
-                              // ),
-                              const Spacer(),
-                              Material(
-                                color: Colors.blueGrey.shade700,
-                                borderRadius: BorderRadius.circular(8),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(8),
-                                  onTap: () {
-                                    final maximizing = !_mapMaximized;
-                                    setState(() => _mapMaximized = maximizing);
-                                    if (maximizing) {
-                                      WidgetsBinding.instance
-                                          .addPostFrameCallback((_) {
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  const SizedBox(width: 8),
+                                  _notifyLoading
+                                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                      : Checkbox(
+                                          value: _notifyChecked,
+                                          onChanged: (v) => _toggleNotify(v ?? false),
+                                          activeColor: Colors.blueAccent,
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                  GestureDetector(
+                                    onTap: () => _toggleNotify(!_notifyChecked),
+                                    child: Text('Notify me when rider is available.',
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                                            color: _notifyChecked ? Colors.blueAccent : Colors.blueGrey)),
+                                  ),
+                                  const Spacer(),
+                                  Material(
+                                    color: Colors.blueGrey.shade700,
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: () {
+                                        final maximizing = !_mapMaximized;
+                                        setState(() => _mapMaximized = maximizing);
+                                        if (maximizing) {
+                                          WidgetsBinding.instance.addPostFrameCallback((_) {
                                             _scrollController.animateTo(
-                                              _scrollController
-                                                  .position
-                                                  .maxScrollExtent,
-                                              duration: const Duration(
-                                                milliseconds: 400,
-                                              ),
+                                              _scrollController.position.maxScrollExtent,
+                                              duration: const Duration(milliseconds: 400),
                                               curve: Curves.easeOut,
                                             );
                                           });
-                                    }
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          _mapMaximized
-                                              ? Icons.fullscreen_exit
-                                              : Icons.fullscreen,
-                                          color: Colors.white,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          _mapMaximized
-                                              ? 'Minimize'
-                                              : 'Maximize',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
+                                        }
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                          Icon(_mapMaximized ? Icons.fullscreen_exit : Icons.fullscreen, color: Colors.white, size: 18),
+                                          const SizedBox(width: 4),
+                                          Text(_mapMaximized ? 'Minimize' : 'Maximize',
+                                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                        ]),
+                                      ),
                                     ),
                                   ),
+                                ],
+                              ),
+                              if (_notifyStatus != null)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                                  child: Text(_notifyStatus!,
+                                      style: TextStyle(fontSize: 11,
+                                          color: _notifyChecked ? Colors.green.shade700 : Colors.blueGrey)),
+                                ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  height: _mapMaximized ? screenH * 0.75 : 220,
+                                  child: const RiderLocationWidget(),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-
-                          // map iframe
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: SizedBox(
-                              width: double.infinity,
-                              height: _mapMaximized ? screenH * 0.75 : 220,
-                              child: const RiderLocationWidget(),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                  // ── Price + Pickup always at bottom ──
                   Padding(
                     padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _openViewer(0),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF66BB6A),
-                                    Color(0xFF388E3C),
-                                  ],
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _openViewer(0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(colors: [Color(0xFF66BB6A), Color(0xFF388E3C)]),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 8)],
+                                  ),
+                                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                    Icon(Icons.price_change, color: Colors.white, size: 18),
+                                    SizedBox(width: 6),
+                                    Text('Price', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                  ]),
                                 ),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.green.withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.price_change,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Price',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const PickupBookingThisWeekScreen(),
-                              ),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF42A5F5),
-                                    Color(0xFF1E88E5),
-                                  ],
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PickupBookingThisWeekScreen())),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.3), blurRadius: 8)],
+                                  ),
+                                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                    Icon(Icons.local_laundry_service, color: Colors.white, size: 18),
+                                    SizedBox(width: 6),
+                                    Text('Pickup', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                  ]),
                                 ),
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.blueAccent.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.local_laundry_service,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Pickup',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-
-          // image viewer overlay
           if (_viewerVisible)
             Positioned.fill(
               child: Material(
@@ -1088,66 +883,33 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                   child: StatefulBuilder(
                     builder: (ctx, setViewerState) => Column(
                       children: [
-                        // close row
                         Align(
                           alignment: Alignment.topRight,
                           child: TextButton.icon(
                             onPressed: _closeViewer,
-                            icon: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            label: const Text(
-                              'Close all',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
+                            icon: const Icon(Icons.close, color: Colors.white, size: 22),
+                            label: const Text('Close all', style: TextStyle(color: Colors.white, fontSize: 13)),
+                            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
                           ),
                         ),
-                        // image
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: Image.asset(
-                                _images[_viewerIndex],
-                                fit: BoxFit.contain,
-                                width: double.infinity,
-                              ),
+                              child: Image.asset(_images[_viewerIndex], fit: BoxFit.contain, width: double.infinity),
                             ),
                           ),
                         ),
-                        // bottom bar
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                           child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white24,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  '${_viewerIndex + 1} / ${_images.length}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                  ),
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)),
+                                child: Text('${_viewerIndex + 1} / ${_images.length}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 13)),
                               ),
                               const Spacer(),
                               ElevatedButton(
@@ -1162,23 +924,13 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blueAccent,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 28,
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                                   elevation: 4,
                                 ),
                                 child: Text(
-                                  _viewerIndex < _images.length - 1
-                                      ? 'Next →'
-                                      : 'Close',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
+                                  _viewerIndex < _images.length - 1 ? 'Next ->' : 'Close',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                 ),
                               ),
                             ],
