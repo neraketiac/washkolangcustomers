@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:washkolangcustomer/enterloyaltycode.dart';
 import 'package:washkolangcustomer/pickup_booking_this_week.dart';
 import 'package:web/web.dart' as web;
 
 const _kCollection = 'rider_location';
+const _kWatchers = 'rider_watchers';
 const _kDoc = 'current';
 const _kSubCollection = 'push_subscriptions';
 const _kVapidKey =
@@ -569,10 +572,16 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   String? _cachedToken;
   bool _mapMaximized = false;
   final ScrollController _scrollController = ScrollController();
+  final String _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+  Timer? _watcherTimer;
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _watcherTimer?.cancel();
+    FirebaseFirestore.instance.collection(_kWatchers).doc(_sessionId).set({
+      'lastSeen': Timestamp.fromDate(DateTime(2000)),
+    }, SetOptions(merge: true));
     super.dispose();
   }
 
@@ -589,14 +598,58 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
   @override
   void initState() {
     super.initState();
+    _registerWatcher();
+    _watcherTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _updateLastSeen(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _restoreNotifyState();
-      // Preload all viewer images so they show instantly
       for (final img in _images) {
         precacheImage(AssetImage(img), context);
       }
       _openViewer(0);
     });
+  }
+
+  Future<void> _registerWatcher() async {
+    String? publicIp;
+    try {
+      final resp = await http.get(
+        Uri.parse('https://api.ipify.org?format=json'),
+      );
+      if (resp.statusCode == 200) {
+        publicIp = jsonDecode(resp.body)['ip'] as String?;
+      }
+    } catch (_) {}
+
+    final ua = web.window.navigator.userAgent;
+    final lang = web.window.navigator.language;
+    final screen = web.window.screen;
+    final tz = DateTime.now().timeZoneName;
+
+    await FirebaseFirestore.instance
+        .collection(_kWatchers)
+        .doc(_sessionId)
+        .set({
+          'joinedAt': Timestamp.now(),
+          'lastSeen': Timestamp.now(),
+          if (publicIp != null) 'publicIp': publicIp,
+          'userAgent': ua,
+          'language': lang,
+          'screenResolution': '${screen.width}x${screen.height}',
+          'timezone': tz,
+          'platform': web.window.navigator.platform,
+        });
+  }
+
+  Future<void> _updateLastSeen() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection(_kWatchers)
+          .doc(_sessionId)
+          .set({'lastSeen': Timestamp.now()}, SetOptions(merge: true));
+    } catch (_) {}
   }
 
   void _openViewer(int index) => setState(() {
@@ -687,7 +740,11 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9)],
+                colors: [
+                  Color(0xFFE3F2FD),
+                  Color(0xFFBBDEFB),
+                  Color(0xFF90CAF9),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -707,21 +764,36 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: Image.asset('assets/images/welcome.png', width: double.infinity, fit: BoxFit.fitWidth),
+                                child: Image.asset(
+                                  'assets/images/welcome.png',
+                                  width: double.infinity,
+                                  fit: BoxFit.fitWidth,
+                                ),
                               ),
                               const SizedBox(height: 10),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: Image.asset('assets/images/Services.png', width: double.infinity, fit: BoxFit.fitWidth),
+                                child: Image.asset(
+                                  'assets/images/Services.png',
+                                  width: double.infinity,
+                                  fit: BoxFit.fitWidth,
+                                ),
                               ),
                               const SizedBox(height: 10),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: Image.asset('assets/images/sample_loyalty_card.png', width: double.infinity, fit: BoxFit.fitWidth),
+                                child: Image.asset(
+                                  'assets/images/sample_loyalty_card.png',
+                                  width: double.infinity,
+                                  fit: BoxFit.fitWidth,
+                                ),
                               ),
                               const SizedBox(height: 10),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.75),
                                   borderRadius: BorderRadius.circular(14),
@@ -729,22 +801,58 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                                 child: Row(
                                   children: [
                                     GestureDetector(
-                                      onTap: () => web.window.open('https://m.me/WashkoLangLaundryHub', '_blank'),
+                                      onTap: () => web.window.open(
+                                        'https://m.me/WashkoLangLaundryHub',
+                                        '_blank',
+                                      ),
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                        decoration: BoxDecoration(color: const Color(0xFF1877F2), borderRadius: BorderRadius.circular(20)),
-                                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                                          Text('??', style: TextStyle(fontSize: 12)),
-                                          SizedBox(width: 4),
-                                          Text('Messenger', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-                                        ]),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1877F2),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              '💬',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Messenger',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                     const Spacer(),
-                                    const Text('Loyalty Card ??', style: TextStyle(fontSize: 12, color: Color(0xFF3A86FF), fontWeight: FontWeight.w600)),
                                     GestureDetector(
-                                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EnterLoyaltyCode())),
-                                      child: Image.network('/icons/Icon-192.png', width: 32, height: 32),
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const EnterLoyaltyCode(),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Loyalty Card 👉 💳',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF3A86FF),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -754,19 +862,34 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                                 children: [
                                   const SizedBox(width: 8),
                                   _notifyLoading
-                                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
                                       : Checkbox(
                                           value: _notifyChecked,
-                                          onChanged: (v) => _toggleNotify(v ?? false),
+                                          onChanged: (v) =>
+                                              _toggleNotify(v ?? false),
                                           activeColor: Colors.blueAccent,
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
                                           visualDensity: VisualDensity.compact,
                                         ),
                                   GestureDetector(
                                     onTap: () => _toggleNotify(!_notifyChecked),
-                                    child: Text('Notify me when rider is available.',
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                                            color: _notifyChecked ? Colors.blueAccent : Colors.blueGrey)),
+                                    child: Text(
+                                      'Notify me when rider is available.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: _notifyChecked
+                                            ? Colors.blueAccent
+                                            : Colors.blueGrey,
+                                      ),
+                                    ),
                                   ),
                                   const Spacer(),
                                   Material(
@@ -776,25 +899,52 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                       onTap: () {
                                         final maximizing = !_mapMaximized;
-                                        setState(() => _mapMaximized = maximizing);
+                                        setState(
+                                          () => _mapMaximized = maximizing,
+                                        );
                                         if (maximizing) {
-                                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                                            _scrollController.animateTo(
-                                              _scrollController.position.maxScrollExtent,
-                                              duration: const Duration(milliseconds: 400),
-                                              curve: Curves.easeOut,
-                                            );
-                                          });
+                                          WidgetsBinding.instance
+                                              .addPostFrameCallback((_) {
+                                                _scrollController.animateTo(
+                                                  _scrollController
+                                                      .position
+                                                      .maxScrollExtent,
+                                                  duration: const Duration(
+                                                    milliseconds: 400,
+                                                  ),
+                                                  curve: Curves.easeOut,
+                                                );
+                                              });
                                         }
                                       },
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                          Icon(_mapMaximized ? Icons.fullscreen_exit : Icons.fullscreen, color: Colors.white, size: 18),
-                                          const SizedBox(width: 4),
-                                          Text(_mapMaximized ? 'Minimize' : 'Maximize',
-                                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                                        ]),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              _mapMaximized
+                                                  ? Icons.fullscreen_exit
+                                                  : Icons.fullscreen,
+                                              color: Colors.white,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              _mapMaximized
+                                                  ? 'Minimize'
+                                                  : 'Maximize',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -802,10 +952,21 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                               ),
                               if (_notifyStatus != null)
                                 Padding(
-                                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-                                  child: Text(_notifyStatus!,
-                                      style: TextStyle(fontSize: 11,
-                                          color: _notifyChecked ? Colors.green.shade700 : Colors.blueGrey)),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    4,
+                                    4,
+                                    4,
+                                    0,
+                                  ),
+                                  child: Text(
+                                    _notifyStatus!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: _notifyChecked
+                                          ? Colors.green.shade700
+                                          : Colors.blueGrey,
+                                    ),
+                                  ),
                                 ),
                               const SizedBox(height: 6),
                               ClipRRect(
@@ -833,36 +994,98 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                               child: GestureDetector(
                                 onTap: () => _openViewer(0),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 13),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(colors: [Color(0xFF66BB6A), Color(0xFF388E3C)]),
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: [BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 8)],
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
                                   ),
-                                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                    Icon(Icons.price_change, color: Colors.white, size: 18),
-                                    SizedBox(width: 6),
-                                    Text('Price', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                                  ]),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF66BB6A),
+                                        Color(0xFF388E3C),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.green.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.price_change,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Price',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: GestureDetector(
-                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PickupBookingThisWeekScreen())),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 13),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: [BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.3), blurRadius: 8)],
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const PickupBookingThisWeekScreen(),
                                   ),
-                                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                    Icon(Icons.local_laundry_service, color: Colors.white, size: 18),
-                                    SizedBox(width: 6),
-                                    Text('Pickup', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                                  ]),
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF42A5F5),
+                                        Color(0xFF1E88E5),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.blueAccent.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.local_laundry_service,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Pickup',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -887,9 +1110,24 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                           alignment: Alignment.topRight,
                           child: TextButton.icon(
                             onPressed: _closeViewer,
-                            icon: const Icon(Icons.close, color: Colors.white, size: 22),
-                            label: const Text('Close all', style: TextStyle(color: Colors.white, fontSize: 13)),
-                            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            label: const Text(
+                              'Close all',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
                           ),
                         ),
                         Expanded(
@@ -897,7 +1135,11 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: Image.asset(_images[_viewerIndex], fit: BoxFit.contain, width: double.infinity),
+                              child: Image.asset(
+                                _images[_viewerIndex],
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                              ),
                             ),
                           ),
                         ),
@@ -906,10 +1148,21 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                           child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)),
-                                child: Text('${_viewerIndex + 1} / ${_images.length}',
-                                    style: const TextStyle(color: Colors.white, fontSize: 13)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white24,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '${_viewerIndex + 1} / ${_images.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ),
                               const Spacer(),
                               ElevatedButton(
@@ -924,13 +1177,23 @@ class _RiderLocationScreenState extends State<RiderLocationScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blueAccent,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 28,
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
                                   elevation: 4,
                                 ),
                                 child: Text(
-                                  _viewerIndex < _images.length - 1 ? 'Next ->' : 'Close',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  _viewerIndex < _images.length - 1
+                                      ? 'Next ->'
+                                      : 'Close',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
                                 ),
                               ),
                             ],
