@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:washkolangcustomer/main.dart';
-import 'package:washkolangcustomer/loyalty_single.dart';
+import 'package:washkolangcustomer/features/loyalty/loyalty_single.dart';
 import 'package:web/web.dart' as web;
 
 class EnterLoyaltyCode extends StatefulWidget {

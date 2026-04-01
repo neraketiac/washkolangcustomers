@@ -6,7 +6,7 @@ import 'package:washkolangcustomer/model/jobmodel.dart';
 import 'package:washkolangcustomer/model/loyalty_order_online_model.dart';
 import 'package:washkolangcustomer/model/loyaltymodel.dart';
 import 'package:washkolangcustomer/model/otheritemmodel.dart';
-import 'package:washkolangcustomer/pickup_booking_this_week.dart';
+import 'package:washkolangcustomer/features/pickup/pickup_booking_this_week.dart';
 
 // 🔥 Make sure these are defined somewhere in your project
 // const String JOBS_QUEUE_REF = "Jobs_queue";
