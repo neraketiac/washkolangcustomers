@@ -46,7 +46,14 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   bool _offline = false;
   bool _streamError = false;
   String? _lastUpdated;
+  bool _showEta = false;
   StreamSubscription? _sub;
+
+  // Customer ETA (fetched if card number known)
+  DateTime? _myEta;
+  int? _myEtaMinutes;
+  double? _myLat;
+  double? _myLng;
 
   List<String> _todaySlots = [];
   bool _loadingSlots = false;
@@ -55,6 +62,41 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   void initState() {
     super.initState();
     _openStream();
+    _loadMyEta();
+  }
+
+  /// If customer is logged in (card number in localStorage), fetch their ETA
+  /// and saved location from the loyalty collection.
+  Future<void> _loadMyEta() async {
+    try {
+      final savedCode = web.window.localStorage.getItem('customer_code');
+      if (savedCode == null) return;
+      final cardNumber = int.tryParse(savedCode);
+      if (cardNumber == null) return;
+
+      final snap = await FirebaseFirestore.instance
+          .collection('loyalty')
+          .where('cardNumber', isEqualTo: cardNumber)
+          .limit(1)
+          .get()
+          .timeout(const Duration(seconds: 10));
+      if (snap.docs.isEmpty) return;
+
+      final data = snap.docs.first.data();
+      final etaTs = data['riderEta'] as Timestamp?;
+      final etaMins = data['riderEtaMinutes'] as int?;
+      final lat = (data['lat'] as num?)?.toDouble();
+      final lng = (data['lng'] as num?)?.toDouble();
+
+      if (mounted) {
+        setState(() {
+          _myEta = etaTs?.toDate().toLocal();
+          _myEtaMinutes = etaMins;
+          _myLat = lat;
+          _myLng = lng;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadTodaySlots() async {
@@ -117,6 +159,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
         final lng = (data['lng'] as num?)?.toDouble();
         final facing = data['facing'] as String?;
         final status = data['status'] as String?;
+        final showEta = data['showEta'] as bool? ?? false;
         final ts = data['updatedAt'] as Timestamp?;
 
         if (mounted) {
@@ -128,6 +171,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
             if (lng != null) _lng = lng;
             if (facing != null) _facing = facing;
             _riderStatus = status;
+            _showEta = showEta;
             if (ts != null) {
               final d = ts.toDate().toLocal();
               _lastUpdated =
@@ -311,12 +355,39 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
               ),
             ),
           ),
+        // ETA banner — shown when rider enabled showEta and customer has ETA
+        if (_showEta && _myEta != null && !_offline)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+            color: Colors.teal.shade50,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.access_time, size: 14, color: Colors.teal.shade700),
+                const SizedBox(width: 6),
+                Text(
+                  'Rider arrives at ${_myEta!.hour.toString().padLeft(2, '0')}:${_myEta!.minute.toString().padLeft(2, '0')}'
+                  '${_myEtaMinutes != null ? '  (~${_myEtaMinutes}min)' : ''}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.teal.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: _LeafletMap(
             key: const ValueKey('rider-map'),
             lat: _lat!,
             lng: _lng!,
             facing: _facing,
+            customerLat: (_showEta && _myLat != null) ? _myLat : null,
+            customerLng: (_showEta && _myLng != null) ? _myLng : null,
+            showRoute:
+                _showEta && _myLat != null && _myLng != null && !_offline,
           ),
         ),
       ],
@@ -330,11 +401,17 @@ class _LeafletMap extends StatefulWidget {
   final double lat;
   final double lng;
   final String? facing;
+  final double? customerLat;
+  final double? customerLng;
+  final bool showRoute;
   const _LeafletMap({
     super.key,
     required this.lat,
     required this.lng,
     this.facing,
+    this.customerLat,
+    this.customerLng,
+    this.showRoute = false,
   });
 
   @override
@@ -392,6 +469,11 @@ class _LeafletMapState extends State<_LeafletMap> {
   void _sendUpdate(double lat, double lng, String? facing) {
     final data = <String, dynamic>{'lat': lat, 'lng': lng};
     if (facing != null) data['facing'] = facing;
+    if (widget.showRoute && widget.customerLat != null) {
+      data['customerLat'] = widget.customerLat;
+      data['customerLng'] = widget.customerLng;
+      data['showRoute'] = true;
+    }
     _iframe.contentWindow?.postMessage(data.jsify(), '*'.toJS);
   }
 
@@ -410,7 +492,9 @@ class _LeafletMapState extends State<_LeafletMap> {
     super.didUpdateWidget(old);
     if (old.lat != widget.lat ||
         old.lng != widget.lng ||
-        old.facing != widget.facing) {
+        old.facing != widget.facing ||
+        old.showRoute != widget.showRoute ||
+        old.customerLat != widget.customerLat) {
       updatePosition(widget.lat, widget.lng, widget.facing);
     }
   }
@@ -511,8 +595,45 @@ window.addEventListener('message',function(e){
     } else {
       animateTo(d.lat,d.lng);
     }
+    // Draw route to customer if requested
+    if(d.showRoute && d.customerLat!==undefined){
+      drawRoute(d.lat, d.lng, d.customerLat, d.customerLng);
+    }
   }
 });
+
+var customerMarker = null;
+var routeLayer = null;
+
+async function drawRoute(rLat, rLng, cLat, cLng){
+  // Place/move customer pin
+  if(!customerMarker){
+    var homeIcon = L.divIcon({
+      html:'<div style="font-size:22px;line-height:1;">📍</div>',
+      iconSize:[28,28],iconAnchor:[14,28],className:''
+    });
+    customerMarker = L.marker([cLat,cLng],{icon:homeIcon}).addTo(map);
+    customerMarker.bindTooltip('Your location',{permanent:false,direction:'top'});
+  } else {
+    customerMarker.setLatLng([cLat,cLng]);
+  }
+  // Remove old route
+  if(routeLayer){ map.removeLayer(routeLayer); routeLayer=null; }
+  // Fetch OSRM route
+  try {
+    var url='https://router.project-osrm.org/route/v1/driving/'+rLng+','+rLat+';'+cLng+','+cLat+'?overview=full&geometries=geojson';
+    var resp=await fetch(url);
+    var data=await resp.json();
+    if(data.routes&&data.routes.length>0){
+      routeLayer=L.geoJSON(data.routes[0].geometry,{
+        style:{color:'#00897b',weight:4,opacity:0.85,dashArray:'8,6'}
+      }).addTo(map);
+    }
+  } catch(err){
+    // fallback straight line
+    routeLayer=L.polyline([[rLat,rLng],[cLat,cLng]],{color:'#00897b',weight:3,dashArray:'8,6',opacity:0.7}).addTo(map);
+  }
+}
 </script>
 </body>
 </html>''';
