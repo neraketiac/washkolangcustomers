@@ -48,7 +48,9 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   String? _lastUpdated;
   bool _showEta = false;
   List<Map<String, dynamic>> _routeStops = [];
+  Timestamp? _routeUpdatedAt;
   StreamSubscription? _sub;
+  StreamSubscription? _etaSub;
 
   // Customer ETA (fetched if card number known)
   DateTime? _myEta;
@@ -66,37 +68,34 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
     _loadMyEta();
   }
 
-  /// If customer is logged in (card number in localStorage), fetch their ETA
-  /// and saved location from the loyalty collection.
-  Future<void> _loadMyEta() async {
+  /// Listens live to the customer's loyalty doc for ETA updates.
+  void _loadMyEta() {
+    _etaSub?.cancel();
     try {
       final savedCode = web.window.localStorage.getItem('customer_code');
       if (savedCode == null) return;
       final cardNumber = int.tryParse(savedCode);
       if (cardNumber == null) return;
 
-      final snap = await FirebaseFirestore.instance
+      _etaSub = FirebaseFirestore.instance
           .collection('loyalty')
           .where('cardNumber', isEqualTo: cardNumber)
           .limit(1)
-          .get()
-          .timeout(const Duration(seconds: 10));
-      if (snap.docs.isEmpty) return;
-
-      final data = snap.docs.first.data();
-      final etaTs = data['riderEta'] as Timestamp?;
-      final etaMins = data['riderEtaMinutes'] as int?;
-      final lat = (data['lat'] as num?)?.toDouble();
-      final lng = (data['lng'] as num?)?.toDouble();
-
-      if (mounted) {
-        setState(() {
-          _myEta = etaTs?.toDate().toLocal();
-          _myEtaMinutes = etaMins;
-          _myLat = lat;
-          _myLng = lng;
-        });
-      }
+          .snapshots()
+          .listen((snap) {
+            if (snap.docs.isEmpty || !mounted) return;
+            final data = snap.docs.first.data();
+            final etaTs = data['riderEta'] as Timestamp?;
+            final etaMins = data['riderEtaMinutes'] as int?;
+            final lat = (data['lat'] as num?)?.toDouble();
+            final lng = (data['lng'] as num?)?.toDouble();
+            setState(() {
+              _myEta = etaTs?.toDate().toLocal();
+              _myEtaMinutes = etaMins;
+              _myLat = lat;
+              _myLng = lng;
+            });
+          });
     } catch (_) {}
   }
 
@@ -162,6 +161,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
         final status = data['status'] as String?;
         final showEta = data['showEta'] as bool? ?? false;
         final rawStops = data['routeStops'];
+        final routeUpdatedAt = data['routeUpdatedAt'] as Timestamp?;
         final routeStops = (rawStops is List)
             ? rawStops
                   .whereType<Map>()
@@ -186,8 +186,11 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
             if (lng != null) _lng = lng;
             if (facing != null) _facing = facing;
             _riderStatus = status;
+            // Trigger ETA load when showEta transitions false→true
+            if (showEta && !_showEta) _loadMyEta();
             _showEta = showEta;
             _routeStops = List<Map<String, dynamic>>.from(routeStops);
+            _routeUpdatedAt = routeUpdatedAt;
             if (ts != null) {
               final d = ts.toDate().toLocal();
               _lastUpdated =
@@ -210,6 +213,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   @override
   void dispose() {
     _sub?.cancel();
+    _etaSub?.cancel();
     super.dispose();
   }
 
@@ -405,6 +409,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
             showRoute:
                 _showEta && _myLat != null && _myLng != null && !_offline,
             routeStops: (_showEta && !_offline) ? _routeStops : const [],
+            routeUpdatedAt: (_showEta && !_offline) ? _routeUpdatedAt : null,
           ),
         ),
       ],
@@ -422,6 +427,7 @@ class _LeafletMap extends StatefulWidget {
   final double? customerLng;
   final bool showRoute;
   final List<Map<String, dynamic>> routeStops;
+  final Timestamp? routeUpdatedAt;
   const _LeafletMap({
     super.key,
     required this.lat,
@@ -431,6 +437,7 @@ class _LeafletMap extends StatefulWidget {
     this.customerLng,
     this.showRoute = false,
     this.routeStops = const [],
+    this.routeUpdatedAt,
   });
 
   @override
@@ -519,7 +526,7 @@ class _LeafletMapState extends State<_LeafletMap> {
         old.facing != widget.facing ||
         old.showRoute != widget.showRoute ||
         old.customerLat != widget.customerLat ||
-        old.routeStops.length != widget.routeStops.length) {
+        old.routeUpdatedAt != widget.routeUpdatedAt) {
       updatePosition(widget.lat, widget.lng, widget.facing);
     }
   }
@@ -644,28 +651,44 @@ function clearStopMarkers(){
   stopMarkers.forEach(function(m){ map.removeLayer(m); });
   stopMarkers = [];
   if(fullRouteLayer){ map.removeLayer(fullRouteLayer); fullRouteLayer=null; }
+  if(window._labelInterval){ clearInterval(window._labelInterval); window._labelInterval=null; }
+  window._lastStops = null;
 }
 
 async function drawStopMarkers(stops, riderLat, riderLng){
   clearStopMarkers();
   if(!stops || stops.length === 0) return;
-  // Draw time labels
-  stops.forEach(function(s){
-    if(!s.lat || !s.lng || !s.etaTime) return;
-    // Compute minutes remaining from now
-    var parts = s.etaTime.split(':');
-    var now = new Date();
-    var eta = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
-    var diffMs = eta - now;
-    var diffMin = Math.round(diffMs / 60000);
-    var label = diffMin <= 0 ? 'Arriving' : diffMin + ' min';
-    var icon = L.divIcon({
-      html:'<div style="background:#1b5e20;color:#fff;border-radius:10px;padding:3px 8px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.6);text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;border:1.5px solid #fff;">'+label+'</div>',
-      iconAnchor:[24,12],className:''
+
+  // Store stops for interval refresh
+  window._lastStops = stops;
+
+  function renderLabels(){
+    stopMarkers.forEach(function(m){ map.removeLayer(m); });
+    stopMarkers = [];
+    stops.forEach(function(s){
+      if(!s.lat || !s.lng || !s.etaTime) return;
+      var parts = s.etaTime.split(':');
+      var now = new Date();
+      var eta = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
+      var diffMs = eta - now;
+      var diffMin = Math.round(diffMs / 60000);
+      var label = diffMin <= 0 ? 'Arriving' : diffMin + ' min';
+      var icon = L.divIcon({
+        html:'<div style="background:#1b5e20;color:#fff;border-radius:10px;padding:3px 8px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.6);text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;border:1.5px solid #fff;">'+label+'</div>',
+        iconAnchor:[24,12],className:''
+      });
+      var m = L.marker([s.lat,s.lng],{icon:icon}).addTo(map);
+      stopMarkers.push(m);
     });
-    var m = L.marker([s.lat,s.lng],{icon:icon}).addTo(map);
-    stopMarkers.push(m);
-  });
+  }
+
+  renderLabels();
+
+  // Refresh labels every 60s without re-fetching route
+  if(window._labelInterval) clearInterval(window._labelInterval);
+  window._labelInterval = setInterval(function(){
+    if(window._lastStops && window._lastStops.length > 0) renderLabels();
+  }, 60000);
   // Draw full route line: rider → all stops in order
   if(riderLat===undefined || riderLng===undefined) return;
   var validStops = stops.filter(function(s){ return s.lat && s.lng; });

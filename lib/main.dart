@@ -28,7 +28,7 @@ Future<void> main() async {
   // Secondary app (signuptest-53277) — jobs database
   final forthApp = await Firebase.initializeApp(
     name: 'forthWeb',
-    options: DefaultFirebaseOptions.forthWeb,
+    options: DefaultFirebaseOptions.loyaltyCardDb,
   );
   forthFirestore = FirebaseFirestore.instanceFor(app: forthApp);
 

@@ -17,7 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      return riderDb;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -40,7 +40,7 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
+  static const FirebaseOptions riderDb = FirebaseOptions(
     apiKey: 'AIzaSyAY9RKLaW6ngSCHvQqiujNxpRwJ9kzssgU',
     appId: '1:368198382683:web:1c00691fe118faa041fb7e',
     messagingSenderId: '368198382683',
@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
   );
 
   // Secondary Firebase project — Jobs_done & Jobs_completed live here
-  static const FirebaseOptions forthWeb = FirebaseOptions(
+  static const FirebaseOptions loyaltyCardDb = FirebaseOptions(
     apiKey: 'AIzaSyCdITzOwEzJ0S3BxeiFWzJyG_QeetguJeU',
     appId: '1:622437507678:web:4a0230dabb6e6161d5cacf',
     messagingSenderId: '622437507678',
