@@ -47,6 +47,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
   bool _streamError = false;
   String? _lastUpdated;
   bool _showEta = false;
+  List<Map<String, dynamic>> _routeStops = [];
   StreamSubscription? _sub;
 
   // Customer ETA (fetched if card number known)
@@ -160,6 +161,20 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
         final facing = data['facing'] as String?;
         final status = data['status'] as String?;
         final showEta = data['showEta'] as bool? ?? false;
+        final rawStops = data['routeStops'];
+        final routeStops = (rawStops is List)
+            ? rawStops
+                  .whereType<Map>()
+                  .map(
+                    (s) => {
+                      'lat': (s['lat'] as num?)?.toDouble() ?? 0.0,
+                      'lng': (s['lng'] as num?)?.toDouble() ?? 0.0,
+                      'etaTime': s['etaTime'] as String? ?? '',
+                    },
+                  )
+                  .where((s) => s['etaTime'] != '')
+                  .toList()
+            : <Map<String, dynamic>>[];
         final ts = data['updatedAt'] as Timestamp?;
 
         if (mounted) {
@@ -172,6 +187,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
             if (facing != null) _facing = facing;
             _riderStatus = status;
             _showEta = showEta;
+            _routeStops = List<Map<String, dynamic>>.from(routeStops);
             if (ts != null) {
               final d = ts.toDate().toLocal();
               _lastUpdated =
@@ -388,6 +404,7 @@ class _RiderLocationWidgetState extends State<RiderLocationWidget> {
             customerLng: (_showEta && _myLng != null) ? _myLng : null,
             showRoute:
                 _showEta && _myLat != null && _myLng != null && !_offline,
+            routeStops: (_showEta && !_offline) ? _routeStops : const [],
           ),
         ),
       ],
@@ -404,6 +421,7 @@ class _LeafletMap extends StatefulWidget {
   final double? customerLat;
   final double? customerLng;
   final bool showRoute;
+  final List<Map<String, dynamic>> routeStops;
   const _LeafletMap({
     super.key,
     required this.lat,
@@ -412,6 +430,7 @@ class _LeafletMap extends StatefulWidget {
     this.customerLat,
     this.customerLng,
     this.showRoute = false,
+    this.routeStops = const [],
   });
 
   @override
@@ -474,6 +493,11 @@ class _LeafletMapState extends State<_LeafletMap> {
       data['customerLng'] = widget.customerLng;
       data['showRoute'] = true;
     }
+    if (widget.routeStops.isNotEmpty) {
+      data['routeStops'] = widget.routeStops;
+    } else {
+      data['routeStops'] = <Map<String, dynamic>>[];
+    }
     _iframe.contentWindow?.postMessage(data.jsify(), '*'.toJS);
   }
 
@@ -494,7 +518,8 @@ class _LeafletMapState extends State<_LeafletMap> {
         old.lng != widget.lng ||
         old.facing != widget.facing ||
         old.showRoute != widget.showRoute ||
-        old.customerLat != widget.customerLat) {
+        old.customerLat != widget.customerLat ||
+        old.routeStops.length != widget.routeStops.length) {
       updatePosition(widget.lat, widget.lng, widget.facing);
     }
   }
@@ -598,12 +623,69 @@ window.addEventListener('message',function(e){
     // Draw route to customer if requested
     if(d.showRoute && d.customerLat!==undefined){
       drawRoute(d.lat, d.lng, d.customerLat, d.customerLng);
+    } else if(!d.showRoute) {
+      // Clear personalized route
+      if(routeLayer){ map.removeLayer(routeLayer); routeLayer=null; }
+      if(customerMarker){ map.removeLayer(customerMarker); customerMarker=null; }
+    }
+    // Draw all route stops — empty array clears them
+    if(d.routeStops!==undefined){
+      drawStopMarkers(d.routeStops, d.lat, d.lng);
     }
   }
 });
 
 var customerMarker = null;
 var routeLayer = null;
+var fullRouteLayer = null;
+var stopMarkers = [];
+
+function clearStopMarkers(){
+  stopMarkers.forEach(function(m){ map.removeLayer(m); });
+  stopMarkers = [];
+  if(fullRouteLayer){ map.removeLayer(fullRouteLayer); fullRouteLayer=null; }
+}
+
+async function drawStopMarkers(stops, riderLat, riderLng){
+  clearStopMarkers();
+  if(!stops || stops.length === 0) return;
+  // Draw time labels
+  stops.forEach(function(s){
+    if(!s.lat || !s.lng || !s.etaTime) return;
+    // Compute minutes remaining from now
+    var parts = s.etaTime.split(':');
+    var now = new Date();
+    var eta = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
+    var diffMs = eta - now;
+    var diffMin = Math.round(diffMs / 60000);
+    var label = diffMin <= 0 ? 'Arriving' : diffMin + ' min';
+    var icon = L.divIcon({
+      html:'<div style="background:#1b5e20;color:#fff;border-radius:10px;padding:3px 8px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.6);text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;border:1.5px solid #fff;">'+label+'</div>',
+      iconAnchor:[24,12],className:''
+    });
+    var m = L.marker([s.lat,s.lng],{icon:icon}).addTo(map);
+    stopMarkers.push(m);
+  });
+  // Draw full route line: rider → all stops in order
+  if(riderLat===undefined || riderLng===undefined) return;
+  var validStops = stops.filter(function(s){ return s.lat && s.lng; });
+  if(validStops.length === 0) return;
+  var coords = riderLng+','+riderLat+';'+validStops.map(function(s){ return s.lng+','+s.lat; }).join(';');
+  try {
+    var url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson&steps=false';
+    var resp=await fetch(url);
+    var data=await resp.json();
+    if(data.routes&&data.routes.length>0){
+      fullRouteLayer=L.geoJSON(data.routes[0].geometry,{
+        style:{color:'#00897b',weight:3,opacity:0.7,dashArray:'8,5'}
+      }).addTo(map);
+    }
+  } catch(err){
+    // fallback: straight polyline through all points
+    var latlngs=[[riderLat,riderLng]].concat(validStops.map(function(s){return[s.lat,s.lng];}));
+    fullRouteLayer=L.polyline(latlngs,{color:'#00897b',weight:2,dashArray:'8,5',opacity:0.6}).addTo(map);
+  }
+}
 
 async function drawRoute(rLat, rLng, cLat, cLng){
   // Place/move customer pin
@@ -613,7 +695,6 @@ async function drawRoute(rLat, rLng, cLat, cLng){
       iconSize:[28,28],iconAnchor:[14,28],className:''
     });
     customerMarker = L.marker([cLat,cLng],{icon:homeIcon}).addTo(map);
-    customerMarker.bindTooltip('Your location',{permanent:false,direction:'top'});
   } else {
     customerMarker.setLatLng([cLat,cLng]);
   }
@@ -630,7 +711,6 @@ async function drawRoute(rLat, rLng, cLat, cLng){
       }).addTo(map);
     }
   } catch(err){
-    // fallback straight line
     routeLayer=L.polyline([[rLat,rLng],[cLat,cLng]],{color:'#00897b',weight:3,dashArray:'8,6',opacity:0.7}).addTo(map);
   }
 }
