@@ -626,6 +626,8 @@ window.addEventListener('message',function(e){
       fromLat=d.lat; fromLng=d.lng; toLat=d.lat; toLng=d.lng;
     } else {
       animateTo(d.lat,d.lng);
+      // Trim route after animation
+      setTimeout(function(){ trimRouteFromRider(d.lat, d.lng); }, 850);
     }
     // Draw route to customer if requested
     if(d.showRoute && d.customerLat!==undefined){
@@ -645,21 +647,46 @@ window.addEventListener('message',function(e){
 var customerMarker = null;
 var routeLayer = null;
 var fullRouteLayer = null;
+var fullRouteCoords = []; // stored for trimming
 var stopMarkers = [];
 
 function clearStopMarkers(){
   stopMarkers.forEach(function(m){ map.removeLayer(m); });
   stopMarkers = [];
   if(fullRouteLayer){ map.removeLayer(fullRouteLayer); fullRouteLayer=null; }
+  fullRouteCoords = [];
   if(window._labelInterval){ clearInterval(window._labelInterval); window._labelInterval=null; }
   window._lastStops = null;
+}
+
+// Find closest point index in fullRouteCoords to (lat,lng)
+function closestPointIndex(lat, lng){
+  var best=0, bestDist=Infinity;
+  for(var i=0;i<fullRouteCoords.length;i++){
+    var c=fullRouteCoords[i];
+    var d=(c[0]-lat)*(c[0]-lat)+(c[1]-lng)*(c[1]-lng);
+    if(d<bestDist){bestDist=d;best=i;}
+  }
+  return best;
+}
+
+// Trim displayed route to show only from rider's current position forward
+function trimRouteFromRider(lat, lng){
+  if(fullRouteCoords.length===0) return;
+  var idx=closestPointIndex(lat,lng);
+  var remaining=fullRouteCoords.slice(idx);
+  if(remaining.length<2){
+    if(fullRouteLayer){map.removeLayer(fullRouteLayer);fullRouteLayer=null;}
+    return;
+  }
+  if(fullRouteLayer) map.removeLayer(fullRouteLayer);
+  fullRouteLayer=L.polyline(remaining,{color:'#00897b',weight:3,opacity:0.7,dashArray:'8,5'}).addTo(map);
 }
 
 async function drawStopMarkers(stops, riderLat, riderLng){
   clearStopMarkers();
   if(!stops || stops.length === 0) return;
 
-  // Store stops for interval refresh
   window._lastStops = stops;
 
   function renderLabels(){
@@ -684,12 +711,12 @@ async function drawStopMarkers(stops, riderLat, riderLng){
 
   renderLabels();
 
-  // Refresh labels every 60s without re-fetching route
   if(window._labelInterval) clearInterval(window._labelInterval);
   window._labelInterval = setInterval(function(){
     if(window._lastStops && window._lastStops.length > 0) renderLabels();
   }, 60000);
-  // Draw full route line: rider → all stops in order
+
+  // Draw full route: rider → all stops, store coords for trimming
   if(riderLat===undefined || riderLng===undefined) return;
   var validStops = stops.filter(function(s){ return s.lat && s.lng; });
   if(validStops.length === 0) return;
@@ -699,19 +726,18 @@ async function drawStopMarkers(stops, riderLat, riderLng){
     var resp=await fetch(url);
     var data=await resp.json();
     if(data.routes&&data.routes.length>0){
-      fullRouteLayer=L.geoJSON(data.routes[0].geometry,{
-        style:{color:'#00897b',weight:3,opacity:0.7,dashArray:'8,5'}
-      }).addTo(map);
+      // Store full coords for trimming — [lat,lng] pairs
+      fullRouteCoords = data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
+      fullRouteLayer=L.polyline(fullRouteCoords,{color:'#00897b',weight:3,opacity:0.7,dashArray:'8,5'}).addTo(map);
     }
   } catch(err){
-    // fallback: straight polyline through all points
     var latlngs=[[riderLat,riderLng]].concat(validStops.map(function(s){return[s.lat,s.lng];}));
+    fullRouteCoords = latlngs;
     fullRouteLayer=L.polyline(latlngs,{color:'#00897b',weight:2,dashArray:'8,5',opacity:0.6}).addTo(map);
   }
 }
 
 async function drawRoute(rLat, rLng, cLat, cLng){
-  // Place/move customer pin
   if(!customerMarker){
     var homeIcon = L.divIcon({
       html:'<div style="font-size:22px;line-height:1;">📍</div>',
@@ -721,9 +747,7 @@ async function drawRoute(rLat, rLng, cLat, cLng){
   } else {
     customerMarker.setLatLng([cLat,cLng]);
   }
-  // Remove old route
   if(routeLayer){ map.removeLayer(routeLayer); routeLayer=null; }
-  // Fetch OSRM route
   try {
     var url='https://router.project-osrm.org/route/v1/driving/'+rLng+','+rLat+';'+cLng+','+cLat+'?overview=full&geometries=geojson';
     var resp=await fetch(url);
